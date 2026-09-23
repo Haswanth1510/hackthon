@@ -3,13 +3,22 @@ import json
 import time
 import asyncio
 import collections
+import mimetypes
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+
+# Ensure standard MIME types are explicitly registered in minimal Linux environments
+mimetypes.init()
+mimetypes.add_type("text/html", ".html")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("image/svg+xml", ".svg")
+mimetypes.add_type("audio/wav", ".wav")
 
 from fastapi import FastAPI, Depends, HTTPException, Request, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 
 from backend.database import init_db, get_db
 from backend.models import (
@@ -642,12 +651,18 @@ async def get_user_purchases(user: Dict[str, Any] = Depends(require_current_user
 FRONTEND_DIR.mkdir(exist_ok=True)
 
 @app.get("/")
+@app.get("/index.html")
 async def serve_index():
     index_file = FRONTEND_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file))
+        return FileResponse(str(index_file), media_type="text/html")
     return JSONResponse({"message": "Stylic.AI backend running. Frontend not found.", "status": "ok"})
 
 # Mount /static → frontend/ so that /static/js/app.js, /static/css/style.css, etc. all resolve.
-# Also mount individual asset sub-paths for legacy references.
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+# Also mount direct subpaths in case assets are requested directly without /static prefix
+for sub in ["css", "js", "images"]:
+    subdir = FRONTEND_DIR / sub
+    if subdir.exists():
+        app.mount(f"/{sub}", StaticFiles(directory=str(subdir)), name=sub)
