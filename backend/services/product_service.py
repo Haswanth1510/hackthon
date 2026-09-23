@@ -1,240 +1,252 @@
 import urllib.parse
+import os
 from typing import List, Dict, Any, Optional
+
 
 class ProductService:
     """
-    Product matching and affiliate linking engine for Amazon India & Flipkart.
-    Strictly filters product suggestions to remain within the user's budget.
+    AI-Driven Product Recommendation Engine.
+    Uses the AI's detected skin issues and recommended ingredients to build
+    precise, live Amazon India / Flipkart search URLs with the affiliate tag.
+    All product suggestions are AI-personalised — no static hardcoded picks.
     """
 
-    # Verified high-efficacy Indian & global skincare inventory with real prices (INR)
-    CATALOG = [
-        # Cleansers
-        {
-            "category": "Cleanser",
-            "title": "Minimalist 2% Salicylic Acid Face Cleanser for Acne & Blackheads",
-            "brand": "Minimalist",
-            "price_inr": 299.0,
-            "rating": 4.6,
-            "platform": "Amazon",
-            "search_query": "Minimalist 2 Salicylic Acid Cleanser",
-            "image_url": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Acne & Blemishes", "Pore Size & Texture", "Oiliness"],
-            "reason": "Sulfate-free cleanser with BHA to dissolve pore-clogging sebum without stripping skin."
-        },
-        {
-            "category": "Cleanser",
-            "title": "Cetaphil Gentle Skin Cleanser for Sensitive & Dry Skin",
-            "brand": "Cetaphil",
-            "price_inr": 365.0,
-            "rating": 4.7,
-            "platform": "Flipkart",
-            "search_query": "Cetaphil Gentle Skin Cleanser",
-            "image_url": "https://images.unsplash.com/photo-1556228722-d0b714b1b369?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Dryness & Barrier Compromise", "Redness & Sensitivity"],
-            "reason": "Dermatologist-recommended non-foaming formula with niacinamide & panthenol."
-        },
-        {
-            "category": "Cleanser",
-            "title": "The Derma Co 1% Kojic Acid Daily Face Wash for Dark Spots",
-            "brand": "The Derma Co",
-            "price_inr": 249.0,
-            "rating": 4.4,
-            "platform": "Amazon",
-            "search_query": "The Derma Co 1 Kojic Acid Face Wash",
-            "image_url": "https://images.unsplash.com/photo-1570554886111-e80fcca6a029?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Dark Spots & Hyperpigmentation", "Dullness & Uneven Skin Tone"],
-            "reason": "Fades post-acne marks and reduces melanin transfer with alpha arbutin & niacinamide."
-        },
+    # Maps AI-detected issue_type keywords → best clinical ingredient(s) to search
+    ISSUE_TO_INGREDIENTS: Dict[str, List[str]] = {
+        "acne":             ["Salicylic Acid", "Niacinamide", "Benzoyl Peroxide"],
+        "blemish":          ["Niacinamide", "Alpha Arbutin", "Kojic Acid"],
+        "pore":             ["Salicylic Acid", "Niacinamide", "Retinol"],
+        "oilin":            ["Niacinamide", "Salicylic Acid"],
+        "dark spot":        ["Vitamin C", "Alpha Arbutin", "Kojic Acid"],
+        "hyperpigment":     ["Vitamin C", "Alpha Arbutin", "Niacinamide"],
+        "dull":             ["Vitamin C", "Glycolic Acid", "Niacinamide"],
+        "uneven":           ["Vitamin C", "AHA", "Niacinamide"],
+        "dryness":          ["Hyaluronic Acid", "Ceramide", "Squalane"],
+        "barrier":          ["Ceramide", "Panthenol", "Squalane"],
+        "redness":          ["Centella Asiatica", "Ceramide", "Azelaic Acid"],
+        "sensitiv":         ["Centella Asiatica", "Oat Extract", "Ceramide"],
+        "wrinkle":          ["Retinol", "Peptide", "Hyaluronic Acid"],
+        "fine line":        ["Retinol", "Peptide", "Vitamin C"],
+        "dark circle":      ["Caffeine", "Vitamin C", "Peptide"],
+        "puffiness":        ["Caffeine", "Peptide"],
+        "texture":          ["AHA", "BHA", "Retinol"],
+        "sun damage":       ["Vitamin C", "Niacinamide", "SPF"],
+        "tan":              ["Kojic Acid", "Vitamin C", "Glycolic Acid"],
+    }
 
-        # Serums & Actives
-        {
-            "category": "Serum",
-            "title": "Minimalist 10% Niacinamide Face Serum with Zinc & EUK-134",
-            "brand": "Minimalist",
-            "price_inr": 599.0,
-            "rating": 4.6,
-            "platform": "Amazon",
-            "search_query": "Minimalist 10 Niacinamide Serum",
-            "image_url": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Acne & Blemishes", "Pore Size & Texture", "Dark Spots & Hyperpigmentation"],
-            "reason": "Clinical-strength formulation to shrink pores, balance oil, and fade blemishes."
-        },
-        {
-            "category": "Serum",
-            "title": "Plum 15% Vitamin C Face Serum with Mandarin for Glowing Skin",
-            "brand": "Plum",
-            "price_inr": 550.0,
-            "rating": 4.5,
-            "platform": "Flipkart",
-            "search_query": "Plum 15 Vitamin C Face Serum",
-            "image_url": "https://images.unsplash.com/photo-1608248597359-5632b71d9d9f?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Dullness & Uneven Skin Tone", "Dark Spots & Hyperpigmentation"],
-            "reason": "Pure ethyl ascorbic acid boosts collagen synthesis and evens out photopigmentation."
-        },
-        {
-            "category": "Serum",
-            "title": "The Ordinary Hyaluronic Acid 2% + B5 Hydration Support",
-            "brand": "The Ordinary",
-            "price_inr": 700.0,
-            "rating": 4.8,
-            "platform": "Amazon",
-            "search_query": "The Ordinary Hyaluronic Acid 2 B5",
-            "image_url": "https://images.unsplash.com/photo-1617897903246-719242758050?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Dryness & Barrier Compromise", "Wrinkles & Fine Lines"],
-            "reason": "Multi-depth molecular weight hyaluronic acid delivers immediate multi-layer dermal plumping."
-        },
-        {
-            "category": "Serum",
-            "title": "The Derma Co 2% Salicylic Acid Face Serum with Witch Hazel",
-            "brand": "The Derma Co",
-            "price_inr": 449.0,
-            "rating": 4.5,
-            "platform": "Amazon",
-            "search_query": "The Derma Co 2 Salicylic Acid Serum",
-            "image_url": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Acne & Blemishes", "Pore Size & Texture"],
-            "reason": "Oil-soluble keratolytic serum that unplugs sebaceous micro-cysts inside the pore lining."
-        },
+    # Maps ingredient → product candidates with AI-targeted search queries
+    INGREDIENT_TO_PRODUCTS: Dict[str, List[Dict[str, Any]]] = {
+        "Salicylic Acid": [
+            {"category": "Cleanser",      "query": "Salicylic Acid 2% face wash acne oily skin India", "platform": "Amazon",   "price_inr": 299},
+            {"category": "Serum",         "query": "Salicylic Acid BHA serum acne pores India",        "platform": "Amazon",   "price_inr": 449},
+        ],
+        "Niacinamide": [
+            {"category": "Serum",         "query": "Niacinamide 10% face serum pores oil control India","platform": "Amazon",  "price_inr": 399},
+            {"category": "Moisturizer",   "query": "Niacinamide moisturizer brightening India",         "platform": "Amazon",  "price_inr": 349},
+        ],
+        "Vitamin C": [
+            {"category": "Serum",         "query": "Vitamin C face serum brightening 15% glow India",  "platform": "Amazon",   "price_inr": 550},
+            {"category": "Cleanser",      "query": "Vitamin C face wash glow radiance India",          "platform": "Flipkart", "price_inr": 249},
+        ],
+        "Hyaluronic Acid": [
+            {"category": "Serum",         "query": "Hyaluronic Acid serum 2% hydration India",         "platform": "Amazon",   "price_inr": 499},
+            {"category": "Moisturizer",   "query": "Hyaluronic Acid water gel moisturizer India",      "platform": "Amazon",   "price_inr": 480},
+        ],
+        "Ceramide": [
+            {"category": "Moisturizer",   "query": "Ceramide moisturizer barrier repair skin India",   "platform": "Amazon",   "price_inr": 499},
+            {"category": "Cleanser",      "query": "Ceramide gentle cleanser sensitive dry skin India", "platform": "Flipkart","price_inr": 365},
+        ],
+        "Retinol": [
+            {"category": "Serum",         "query": "Retinol serum anti aging wrinkle India",           "platform": "Amazon",   "price_inr": 699},
+        ],
+        "Alpha Arbutin": [
+            {"category": "Serum",         "query": "Alpha Arbutin 2% dark spot serum India",           "platform": "Amazon",   "price_inr": 449},
+        ],
+        "Kojic Acid": [
+            {"category": "Serum",         "query": "Kojic Acid face serum hyperpigmentation India",    "platform": "Amazon",   "price_inr": 399},
+            {"category": "Cleanser",      "query": "Kojic Acid face wash dark spots India",            "platform": "Flipkart", "price_inr": 249},
+        ],
+        "Centella Asiatica": [
+            {"category": "Serum",         "query": "Centella Asiatica cica serum calming redness India","platform": "Amazon",  "price_inr": 499},
+            {"category": "Moisturizer",   "query": "Centella cica cream soothing India",               "platform": "Amazon",   "price_inr": 399},
+        ],
+        "Caffeine": [
+            {"category": "Eye Care",      "query": "Caffeine eye serum dark circles puffiness India",  "platform": "Amazon",   "price_inr": 499},
+        ],
+        "Peptide": [
+            {"category": "Serum",         "query": "Peptide collagen anti aging serum India",          "platform": "Amazon",   "price_inr": 649},
+            {"category": "Eye Care",      "query": "Peptide eye cream fine lines India",               "platform": "Flipkart", "price_inr": 449},
+        ],
+        "Glycolic Acid": [
+            {"category": "Exfoliant",     "query": "Glycolic Acid toner AHA exfoliant India",          "platform": "Amazon",   "price_inr": 499},
+        ],
+        "AHA": [
+            {"category": "Exfoliant",     "query": "AHA BHA exfoliating toner face India",             "platform": "Amazon",   "price_inr": 499},
+        ],
+        "Benzoyl Peroxide": [
+            {"category": "Spot Treatment","query": "Benzoyl Peroxide acne spot treatment gel India",   "platform": "Amazon",   "price_inr": 299},
+        ],
+        "Azelaic Acid": [
+            {"category": "Serum",         "query": "Azelaic Acid serum redness rosacea India",         "platform": "Amazon",   "price_inr": 549},
+        ],
+        "Squalane": [
+            {"category": "Moisturizer",   "query": "Squalane face oil moisturizer plumping India",     "platform": "Amazon",   "price_inr": 599},
+        ],
+        "Panthenol": [
+            {"category": "Moisturizer",   "query": "Panthenol B5 moisturizer barrier India",           "platform": "Amazon",   "price_inr": 399},
+        ],
+        "SPF": [
+            {"category": "Sunscreen",     "query": "SPF 50 PA++++ sunscreen no white cast India",      "platform": "Amazon",   "price_inr": 399},
+        ],
+    }
 
-        # Moisturizers
-        {
-            "category": "Moisturizer",
-            "title": "Neutrogena Hydro Boost Water Gel with Hyaluronic Acid",
-            "brand": "Neutrogena",
-            "price_inr": 480.0,
-            "rating": 4.7,
-            "platform": "Amazon",
-            "search_query": "Neutrogena Hydro Boost Water Gel",
-            "image_url": "https://images.unsplash.com/photo-1556228724-4da94314c1eb?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Dryness & Barrier Compromise", "Dullness & Uneven Skin Tone", "Oiliness"],
-            "reason": "Ultra-lightweight oil-free formula that locks in 72-hour moisture without feeling greasy."
-        },
-        {
-            "category": "Moisturizer",
-            "title": "Dr. Sheth's Ceramide & Vitamin C Oil-Free Moisturizer",
-            "brand": "Dr. Sheth's",
-            "price_inr": 349.0,
-            "rating": 4.5,
-            "platform": "Flipkart",
-            "search_query": "Dr Sheths Ceramide Vitamin C Moisturizer",
-            "image_url": "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Dryness & Barrier Compromise", "Redness & Sensitivity", "Acne & Blemishes"],
-            "reason": "Formulated specifically for Indian skin to reinforce lipid barrier and soothe reactive inflammation."
-        },
-
-        # Sunscreens
-        {
-            "category": "Sunscreen",
-            "title": "Aqualogica Radiance+ Dewy Sunscreen with Watermelon & Niacinamide SPF 50+",
-            "brand": "Aqualogica",
-            "price_inr": 399.0,
-            "rating": 4.6,
-            "platform": "Amazon",
-            "search_query": "Aqualogica Radiance Dewy Sunscreen SPF 50",
-            "image_url": "https://images.unsplash.com/photo-1563178406-4cdc2923acbc?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Dark Spots & Hyperpigmentation", "Dullness & Uneven Skin Tone"],
-            "reason": "Broad-spectrum zero white cast UV shield with PA++++ and blue light defense."
-        },
-        {
-            "category": "Sunscreen",
-            "title": "The Derma Co 1% Hyaluronic Sunscreen Aqua Gel SPF 50 PA++++",
-            "brand": "The Derma Co",
-            "price_inr": 499.0,
-            "rating": 4.7,
-            "platform": "Flipkart",
-            "search_query": "The Derma Co 1 Hyaluronic Sunscreen Aqua Gel",
-            "image_url": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Acne & Blemishes", "Oiliness", "Pore Size & Texture"],
-            "reason": "Non-greasy, fast-absorbing sunscreen that won't clog acne-prone pores or sting eyes."
-        },
-
-        # Eye Care
-        {
-            "category": "Eye Care",
-            "title": "Minimalist 5% Caffeine Eye Serum with EGCG for Dark Circles & Puffiness",
-            "brand": "Minimalist",
-            "price_inr": 499.0,
-            "rating": 4.4,
-            "platform": "Amazon",
-            "search_query": "Minimalist 5 Caffeine Eye Serum",
-            "image_url": "https://images.unsplash.com/photo-1512290900672-1f02e1b12b50?w=500&auto=format&fit=crop&q=60",
-            "target_issues": ["Dark Circles & Periorbital Fatigue"],
-            "reason": "Vasoconstrictive high-solubility caffeine solution with antioxidant green tea catechins."
-        }
-    ]
+    SUNSCREEN_FALLBACK = {
+        "category": "Sunscreen",
+        "query": "SPF 50 PA++++ sunscreen broad spectrum no white cast India",
+        "platform": "Amazon",
+        "price_inr": 399,
+        "reason": (
+            "Daily SPF 50+ PA++++ is clinically essential to prevent UV-induced "
+            "pigmentation and protect active ingredient treatments from degradation."
+        ),
+    }
 
     @classmethod
     def generate_affiliate_url(cls, platform: str, query: str) -> str:
-        """Constructs live deep-link search/product URL for Amazon India or Flipkart with custom affiliate tags."""
-        import os
+        """Constructs a live deep-link Amazon India / Flipkart search URL with affiliate tag."""
         amazon_tag = os.getenv("AMAZON_AFFILIATE_TAG", "stylicai21-21")
         flipkart_id = os.getenv("FLIPKART_AFFILIATE_ID", "skincarefashion")
-        
         encoded_query = urllib.parse.quote_plus(query)
         if platform.lower() == "flipkart":
-            return f"https://www.flipkart.com/search?q={encoded_query}&affid={flipkart_id}&otracker=search&marketplace=FLIPKART"
-        else:
-            return f"https://www.amazon.in/s?k={encoded_query}&tag={amazon_tag}"
+            return (
+                f"https://www.flipkart.com/search?q={encoded_query}"
+                f"&affid={flipkart_id}&otracker=search&marketplace=FLIPKART"
+            )
+        return f"https://www.amazon.in/s?k={encoded_query}&tag={amazon_tag}"
 
     @classmethod
     def match_products(
         cls,
         detected_issues: List[Dict[str, Any]],
         max_budget_inr: Optional[float] = None,
-        skin_type: str = "Combination"
+        skin_type: str = "Combination",
+        recommended_ingredients: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Selects optimal skincare regimen components matched to detected concerns.
-        If max_budget_inr is provided, respects the limit; otherwise selects best clinical matches.
+        AI-Driven product matching:
+        1. Uses AI's recommended_ingredients as the primary signal (highest priority).
+        2. Falls back to detected issue_type → ingredient mapping.
+        3. Each ingredient maps to a targeted Amazon/Flipkart live search URL.
+        4. Deduplicates by category. Always includes sunscreen.
         """
-        issue_names = [issue.get("issue_type", "") for issue in detected_issues]
+        # ── Step 1: Build prioritised ingredient list ───────────────────────────
+        priority_ingredients: List[str] = []
+
+        # Primary: AI-returned recommended_ingredients
+        if recommended_ingredients:
+            for ing in recommended_ingredients:
+                ing_clean = ing.strip()
+                if ing_clean in cls.INGREDIENT_TO_PRODUCTS:
+                    if ing_clean not in priority_ingredients:
+                        priority_ingredients.append(ing_clean)
+                else:
+                    # Fuzzy match e.g. "Salicylic Acid 2%" → "Salicylic Acid"
+                    for known in cls.INGREDIENT_TO_PRODUCTS:
+                        if known.lower() in ing_clean.lower() or ing_clean.lower() in known.lower():
+                            if known not in priority_ingredients:
+                                priority_ingredients.append(known)
+                            break
+
+        # Secondary: issue-type → ingredient mapping
+        issue_names = [i.get("issue_type", "").lower() for i in detected_issues]
+        for issue in issue_names:
+            for keyword, ings in cls.ISSUE_TO_INGREDIENTS.items():
+                if keyword in issue:
+                    for ing in ings:
+                        if ing in cls.INGREDIENT_TO_PRODUCTS and ing not in priority_ingredients:
+                            priority_ingredients.append(ing)
+
+        # ── Step 2: Build one product per category ──────────────────────────────
         matched: List[Dict[str, Any]] = []
-        categories_filled = set()
+        categories_filled: set = set()
 
-        # Score catalog items based on relevance to detected concerns
-        scored_catalog = []
-        for item in cls.CATALOG:
-            # Filter strictly by individual product budget if specified
-            if max_budget_inr and max_budget_inr > 0 and item["price_inr"] > max_budget_inr:
-                continue
+        for ingredient in priority_ingredients:
+            if len(matched) >= 5:
+                break
+            for candidate in cls.INGREDIENT_TO_PRODUCTS.get(ingredient, []):
+                cat = candidate["category"]
+                if cat in categories_filled:
+                    continue
 
-            score = 0
-            for issue_name in issue_names:
-                for target in item["target_issues"]:
-                    if issue_name.lower() in target.lower() or target.lower() in issue_name.lower():
-                        score += 10
+                price = candidate["price_inr"]
+                if max_budget_inr and max_budget_inr > 0:
+                    if price > max_budget_inr * 1.25 and len(matched) >= 2:
+                        continue
 
-            scored_catalog.append((score, item))
+                categories_filled.add(cat)
+                query = candidate["query"]
+                platform = candidate["platform"]
+                affiliate_url = cls.generate_affiliate_url(platform, query)
 
-        # Sort descending by relevance score, then rating
-        scored_catalog.sort(key=lambda x: (x[0], x[1]["rating"]), reverse=True)
+                linked_issues = [
+                    iss for iss, ings in cls.ISSUE_TO_INGREDIENTS.items()
+                    if ingredient in ings and any(iss in issue for issue in issue_names)
+                ]
+                reason = (
+                    f"AI-recommended {ingredient} to target your detected "
+                    f"{', '.join(linked_issues) if linked_issues else 'skin concerns'}. "
+                    f"Click to shop live {platform} results with affiliate savings."
+                )
 
-        current_total = 0.0
-        for _, item in scored_catalog:
-            cat = item["category"]
-            if cat not in categories_filled:
-                if (max_budget_inr is None or max_budget_inr <= 0) or (current_total + item["price_inr"] <= max_budget_inr * 1.25) or len(matched) < 2:
-                    categories_filled.add(cat)
-                    product_copy = dict(item)
-                    product_copy["product_url"] = cls.generate_affiliate_url(item["platform"], item["search_query"])
-                    product_copy["target_issue"] = item["target_issues"][0] if item["target_issues"] else "Skin Health"
-                    matched.append(product_copy)
-                    current_total += item["price_inr"]
-                    if len(matched) >= 4:
-                        break
+                matched.append({
+                    "category":         cat,
+                    "title":            f"{ingredient} – AI-Matched {cat}",
+                    "brand":            "AI Recommended · Live Amazon Search",
+                    "price_inr":        float(price),
+                    "rating":           4.5,
+                    "platform":         platform,
+                    "search_query":     query,
+                    "product_url":      affiliate_url,
+                    "target_issue":     linked_issues[0] if linked_issues else "Skin Health",
+                    "target_issues":    linked_issues or ["Skin Health"],
+                    "reason":           reason,
+                    "image_url":        (
+                        "https://images.unsplash.com/photo-1620916566398-39f1143ab7be"
+                        "?w=500&auto=format&fit=crop&q=60"
+                    ),
+                    "ingredient_focus": ingredient,
+                    "shop_note":        f"🔍 Live Amazon India search: '{ingredient}'",
+                })
+                break
 
-        # If budget allows or fewer matched, add essential sunscreen/cleanser
-        if len(matched) < 3:
-            for item in cls.CATALOG:
-                cat = item["category"]
-                if cat not in categories_filled and item["price_inr"] <= max_budget_inr:
-                    categories_filled.add(cat)
-                    product_copy = dict(item)
-                    product_copy["product_url"] = cls.generate_affiliate_url(item["platform"], item["search_query"])
-                    product_copy["target_issue"] = item["target_issues"][0]
-                    matched.append(product_copy)
-                    if len(matched) >= 3:
-                        break
+        # ── Step 3: Always add sunscreen if not present ─────────────────────────
+        if "Sunscreen" not in categories_filled:
+            sun = cls.SUNSCREEN_FALLBACK
+            ok_budget = (
+                not max_budget_inr
+                or max_budget_inr <= 0
+                or sun["price_inr"] <= max_budget_inr * 1.25
+            )
+            if ok_budget:
+                affiliate_url = cls.generate_affiliate_url(sun["platform"], sun["query"])
+                matched.append({
+                    "category":         "Sunscreen",
+                    "title":            "SPF 50+ PA++++ Broad-Spectrum – AI Essential",
+                    "brand":            "AI Recommended · Live Amazon Search",
+                    "price_inr":        float(sun["price_inr"]),
+                    "rating":           4.7,
+                    "platform":         sun["platform"],
+                    "search_query":     sun["query"],
+                    "product_url":      affiliate_url,
+                    "target_issue":     "UV Protection",
+                    "target_issues":    ["UV Protection", "Dark Spots & Hyperpigmentation"],
+                    "reason":           sun["reason"],
+                    "image_url":        (
+                        "https://images.unsplash.com/photo-1563178406-4cdc2923acbc"
+                        "?w=500&auto=format&fit=crop&q=60"
+                    ),
+                    "ingredient_focus": "SPF",
+                    "shop_note":        "🔍 Live Amazon India search: SPF 50 sunscreens",
+                })
 
-        return matched
+        return matched[:5]

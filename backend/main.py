@@ -282,11 +282,12 @@ async def analyze_skin(
         err_msg = diagnosis.get("error") or "Non-human subject detected. Stylic.AI clinical scanner is calibrated strictly for living human beings. Please upload or scan a clear human facial portrait."
         raise HTTPException(status_code=400, detail=err_msg)
 
-    # 4. Match skincare products based on efficacy and detected conditions (no budget barrier)
+    # 4. AI-driven product matching: use AI's recommended ingredients + detected issues
     matched_products = ProductService.match_products(
         detected_issues=diagnosis.get("issues", []),
         max_budget_inr=req.budget_skincare if (req.budget_skincare and req.budget_skincare > 0) else None,
-        skin_type=diagnosis.get("skin_type", "Combination")
+        skin_type=diagnosis.get("skin_type", "Combination"),
+        recommended_ingredients=diagnosis.get("recommended_ingredients", []),
     )
 
     # 5. Generate complete Head-to-Toe outfit (Hat to Shoes)
