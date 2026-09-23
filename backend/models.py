@@ -1,9 +1,10 @@
+import re
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field, field_validator
 
 # --- Auth Models ---
 class UserRegisterRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str = Field(..., min_length=6)
     full_name: str
     gender: Optional[str] = "unspecified"
@@ -11,8 +12,16 @@ class UserRegisterRequest(BaseModel):
     budget_skincare: Optional[float] = 2000.0
     budget_fashion: Optional[float] = 3500.0
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+            raise ValueError("Invalid email format")
+        return v
+
 class UserLoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 class UserProfileUpdate(BaseModel):
