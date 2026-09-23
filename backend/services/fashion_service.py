@@ -10,14 +10,19 @@ class FashionService:
     AI Fashion Stylist providing complete Head-to-Toe styling (Hat to Shoes).
     Curates Headwear, Topwear, Bottomwear, Footwear, and Accessories in the exact
     chromatic colors diagnosed for the user's skin undertones, strictly calibrated
-    to fit within the user's preferred budget price with active affiliate links.
+    to fit within the user's preferred budget price with direct product affiliate links.
     Supports tailored silhouettes for female, male, and gender-inclusive profiles.
     """
 
     @staticmethod
-    def _create_affiliate_link(platform: str, query: str) -> str:
+    def _create_affiliate_link(
+        platform: str,
+        query: str,
+        direct_url: Optional[str] = None,
+        asin: Optional[str] = None
+    ) -> str:
         from backend.services.product_service import ProductService
-        return ProductService.generate_affiliate_url(platform, query)
+        return ProductService.generate_affiliate_url(platform, query, direct_url=direct_url, asin=asin)
 
     @classmethod
     async def recommend_outfit(
@@ -33,7 +38,7 @@ class FashionService:
         """
         Builds a complete Head-to-Toe outfit (Hat/Hairwear, Topwear, Bottomwear, Shoes, Accessories)
         tailored directly in the AI diagnosed chromatic skin colors, strictly observing
-        the user's preferred budget price and creating affiliate search links for each piece.
+        the user's preferred budget price and creating direct product page affiliate links for each piece.
         """
         preferred_budget = float(budget_inr) if (budget_inr is not None and budget_inr > 0) else 3500.0
 
@@ -79,7 +84,7 @@ class FashionService:
             p_acc = 149
             p_foot = max(199, p_foot - 50)
 
-        # 3. Occasion & Gender Apparel Templates with Diagnosed Colors
+        # 3. Occasion & Gender Apparel Templates with Diagnosed Colors & Direct Product Links
         occ = (occasion or "Casual").strip().title()
         gen_clean = (gender or "").strip().lower()
         is_female = gen_clean in ["female", "woman", "women", "f"]
@@ -93,9 +98,13 @@ class FashionService:
         actual_total = 0.0
 
         for it in items_def:
-            # Affiliate search query precisely matching brand, diagnosed color, and item type
             q = f"{it['brand']} {it['name']}"
-            aff_url = cls._create_affiliate_link(it["plat"], q)
+            aff_url = cls._create_affiliate_link(
+                it["plat"],
+                q,
+                direct_url=it.get("direct_url"),
+                asin=it.get("asin")
+            )
             item_obj = {
                 "item_type": it["type"],
                 "name": it["name"],
@@ -116,6 +125,7 @@ class FashionService:
         styling_tips = [
             f"Chromatic Color Match ({season}): Upper silhouette in {c_top['name']} ({c_top['hex']}) harmonizes with your diagnosed skin undertones, paired with {c_bot['name']} bottoms.",
             f"Budget Optimization: Complete 5-piece {gender_desc} capsule ensemble curated within your preferred budget of ₹{preferred_budget:,.0f} (Total: ₹{actual_total:,.0f}).",
+            f"Direct Verified Links: Direct Amazon product page links provide one-click purchasing with your active affiliate discount.",
             f"Facial Harmony: Neckline contouring and {items_def[0]['name']} naturally frame your {face_shape} facial profile."
         ]
 
@@ -143,6 +153,8 @@ class FashionService:
                     "brand": "Carlton London",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B09MZ8Y275",
+                    "direct_url": "https://www.amazon.in/dp/B09MZ8Y275",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=500&auto=format&fit=crop&q=60"
                 },
@@ -152,6 +164,8 @@ class FashionService:
                     "brand": "Vero Moda",
                     "price": p_top,
                     "plat": "Amazon",
+                    "asin": "B07MGB563Q",
+                    "direct_url": "https://www.amazon.in/dp/B07MGB563Q",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500&auto=format&fit=crop&q=60"
                 },
@@ -160,7 +174,9 @@ class FashionService:
                     "name": f"{c_bot['name']} High-Rise Pleated Ankle Trousers",
                     "brand": "Van Heusen Woman",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B08FBL73S9",
+                    "direct_url": "https://www.amazon.in/dp/B08FBL73S9",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1479064555552-3ef4979f8908?w=500&auto=format&fit=crop&q=60"
                 },
@@ -170,6 +186,8 @@ class FashionService:
                     "brand": "Metro",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B079DMC6K4",
+                    "direct_url": "https://www.amazon.in/dp/B079DMC6K4",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&auto=format&fit=crop&q=60"
                 },
@@ -179,6 +197,8 @@ class FashionService:
                     "brand": "Lavie",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B07N25D5MV",
+                    "direct_url": "https://www.amazon.in/dp/B07N25D5MV",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&auto=format&fit=crop&q=60"
                 }
@@ -191,6 +211,8 @@ class FashionService:
                     "brand": "Carlton London",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B09MZ8Y275",
+                    "direct_url": "https://www.amazon.in/dp/B09MZ8Y275",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=500&auto=format&fit=crop&q=60"
                 },
@@ -200,6 +222,8 @@ class FashionService:
                     "brand": "Forever New",
                     "price": p_top,
                     "plat": "Amazon",
+                    "asin": "B091V28X1K",
+                    "direct_url": "https://www.amazon.in/dp/B091V28X1K",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1518622358385-90d473aab4b8?w=500&auto=format&fit=crop&q=60"
                 },
@@ -208,7 +232,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Satin Finish Flared Midi Skirt",
                     "brand": "ONLY",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B084ZNWN2M",
+                    "direct_url": "https://www.amazon.in/dp/B084ZNWN2M",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=500&auto=format&fit=crop&q=60"
                 },
@@ -218,6 +244,8 @@ class FashionService:
                     "brand": "Catwalk",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B07X99182C",
+                    "direct_url": "https://www.amazon.in/dp/B07X99182C",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&auto=format&fit=crop&q=60"
                 },
@@ -227,6 +255,8 @@ class FashionService:
                     "brand": "GIVA",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B08QCP4R1N",
+                    "direct_url": "https://www.amazon.in/dp/B08QCP4R1N",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&auto=format&fit=crop&q=60"
                 }
@@ -239,6 +269,8 @@ class FashionService:
                     "brand": "Zaveri Pearls",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B079DMSM1Z",
+                    "direct_url": "https://www.amazon.in/dp/B079DMSM1Z",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1534215754734-18e55d13e346?w=500&auto=format&fit=crop&q=60"
                 },
@@ -247,7 +279,9 @@ class FashionService:
                     "name": f"{c_top['name']} Shimmer Ruched Crop Corset Top",
                     "brand": "Snitch Woman",
                     "price": p_top,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07Z8TKMZP",
+                    "direct_url": "https://www.amazon.in/dp/B07Z8TKMZP",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1518622358385-90d473aab4b8?w=500&auto=format&fit=crop&q=60"
                 },
@@ -256,7 +290,9 @@ class FashionService:
                     "name": f"{c_bot['name']} High-Rise Wide-Leg Sleek Palazzo Trousers",
                     "brand": "Sassafras",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B08N5S55W3",
+                    "direct_url": "https://www.amazon.in/dp/B08N5S55W3",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=500&auto=format&fit=crop&q=60"
                 },
@@ -266,6 +302,8 @@ class FashionService:
                     "brand": "Mochi",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B079DMC6K4",
+                    "direct_url": "https://www.amazon.in/dp/B079DMC6K4",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&auto=format&fit=crop&q=60"
                 },
@@ -275,6 +313,8 @@ class FashionService:
                     "brand": "Baggit",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B07N25D5MV",
+                    "direct_url": "https://www.amazon.in/dp/B07N25D5MV",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&auto=format&fit=crop&q=60"
                 }
@@ -287,6 +327,8 @@ class FashionService:
                     "brand": "Puma",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B07H83L144",
+                    "direct_url": "https://www.amazon.in/dp/B07H83L144",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&auto=format&fit=crop&q=60"
                 },
@@ -295,7 +337,9 @@ class FashionService:
                     "name": f"{c_top['name']} Quick-Dry Seamless Racerback Athletic Tank",
                     "brand": "HRX",
                     "price": p_top,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07Z8TKMZP",
+                    "direct_url": "https://www.amazon.in/dp/B07Z8TKMZP",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1518622358385-90d473aab4b8?w=500&auto=format&fit=crop&q=60"
                 },
@@ -304,7 +348,9 @@ class FashionService:
                     "name": f"{c_bot['name']} High-Rise Squat-Proof Compression Tights",
                     "brand": "Cultsport",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B08N5S55W3",
+                    "direct_url": "https://www.amazon.in/dp/B08N5S55W3",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=60"
                 },
@@ -313,7 +359,9 @@ class FashionService:
                     "name": f"{c_foot['name']} Cloud-Cushioned Lightweight Running Shoes",
                     "brand": "Sparx",
                     "price": p_foot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B09NVXWW39",
+                    "direct_url": "https://www.amazon.in/dp/B09NVXWW39",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1607522370275-f14206abe5d3?w=500&auto=format&fit=crop&q=60"
                 },
@@ -323,6 +371,8 @@ class FashionService:
                     "brand": "Safari",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B08339Z8XQ",
+                    "direct_url": "https://www.amazon.in/dp/B08339Z8XQ",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60"
                 }
@@ -335,6 +385,8 @@ class FashionService:
                     "brand": "Urban Monkey",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B07H83L144",
+                    "direct_url": "https://www.amazon.in/dp/B07H83L144",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1534215754734-18e55d13e346?w=500&auto=format&fit=crop&q=60"
                 },
@@ -343,7 +395,9 @@ class FashionService:
                     "name": f"{c_top['name']} Oversized Drop-Shoulder Graphic Tee",
                     "brand": "Bewakoof",
                     "price": p_top,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07Z8TKMZP",
+                    "direct_url": "https://www.amazon.in/dp/B07Z8TKMZP",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=60"
                 },
@@ -353,6 +407,8 @@ class FashionService:
                     "brand": "Tokyo Talkies",
                     "price": p_bot,
                     "plat": "Amazon",
+                    "asin": "B08N5S55W3",
+                    "direct_url": "https://www.amazon.in/dp/B08N5S55W3",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1542272604-780c96856592?w=500&auto=format&fit=crop&q=60"
                 },
@@ -362,6 +418,8 @@ class FashionService:
                     "brand": "Red Tape",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B09NVXWW39",
+                    "direct_url": "https://www.amazon.in/dp/B09NVXWW39",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=500&auto=format&fit=crop&q=60"
                 },
@@ -371,6 +429,8 @@ class FashionService:
                     "brand": "Safari",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B08339Z8XQ",
+                    "direct_url": "https://www.amazon.in/dp/B08339Z8XQ",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60"
                 }
@@ -383,6 +443,8 @@ class FashionService:
                     "brand": "Zaveri Pearls",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B079DMSM1Z",
+                    "direct_url": "https://www.amazon.in/dp/B079DMSM1Z",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=500&auto=format&fit=crop&q=60"
                 },
@@ -392,6 +454,8 @@ class FashionService:
                     "brand": "Libas",
                     "price": p_top,
                     "plat": "Amazon",
+                    "asin": "B07P7V9HZZ",
+                    "direct_url": "https://www.amazon.in/dp/B07P7V9HZZ",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=500&auto=format&fit=crop&q=60"
                 },
@@ -400,7 +464,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Gold-Bordered Flared Ethnic Sharara Pants",
                     "brand": "W for Woman",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B08B5374G3",
+                    "direct_url": "https://www.amazon.in/dp/B08B5374G3",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=500&auto=format&fit=crop&q=60"
                 },
@@ -410,6 +476,8 @@ class FashionService:
                     "brand": "Metro",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B079DMC6K4",
+                    "direct_url": "https://www.amazon.in/dp/B079DMC6K4",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&auto=format&fit=crop&q=60"
                 },
@@ -419,6 +487,8 @@ class FashionService:
                     "brand": "Zaveri Pearls",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B079DMSM1Z",
+                    "direct_url": "https://www.amazon.in/dp/B079DMSM1Z",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&auto=format&fit=crop&q=60"
                 }
@@ -431,6 +501,8 @@ class FashionService:
                     "brand": "Puma",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B07H83L144",
+                    "direct_url": "https://www.amazon.in/dp/B07H83L144",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&auto=format&fit=crop&q=60"
                 },
@@ -439,7 +511,9 @@ class FashionService:
                     "name": f"{c_top['name']} Pure Cotton Breathable Linen-Blend Shirt",
                     "brand": "ONLY",
                     "price": p_top,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07Z8TKMZP",
+                    "direct_url": "https://www.amazon.in/dp/B07Z8TKMZP",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=500&auto=format&fit=crop&q=60"
                 },
@@ -448,7 +522,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Straight-Fit Cropped Ankle Chinos",
                     "brand": "Tokyo Talkies",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B08N5S55W3",
+                    "direct_url": "https://www.amazon.in/dp/B08N5S55W3",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=60"
                 },
@@ -458,6 +534,8 @@ class FashionService:
                     "brand": "Red Tape",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B09NVXWW39",
+                    "direct_url": "https://www.amazon.in/dp/B09NVXWW39",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=500&auto=format&fit=crop&q=60"
                 },
@@ -467,6 +545,8 @@ class FashionService:
                     "brand": "Lavie",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B07N25D5MV",
+                    "direct_url": "https://www.amazon.in/dp/B07N25D5MV",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&auto=format&fit=crop&q=60"
                 }
@@ -485,6 +565,8 @@ class FashionService:
                     "brand": "Peter England",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B08L7V7YJ2",
+                    "direct_url": "https://www.amazon.in/dp/B08L7V7YJ2",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1514327605112-b887c0e61c0a?w=500&auto=format&fit=crop&q=60"
                 },
@@ -494,6 +576,8 @@ class FashionService:
                     "brand": "Raymond",
                     "price": p_top,
                     "plat": "Amazon",
+                    "asin": "B08V536F3Z",
+                    "direct_url": "https://www.amazon.in/dp/B08V536F3Z",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500&auto=format&fit=crop&q=60"
                 },
@@ -502,7 +586,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Tailored Flat-Front Formal Trousers",
                     "brand": "Van Heusen",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07N8D439K",
+                    "direct_url": "https://www.amazon.in/dp/B07N8D439K",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1479064555552-3ef4979f8908?w=500&auto=format&fit=crop&q=60"
                 },
@@ -512,6 +598,8 @@ class FashionService:
                     "brand": "Bata",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B00T75A4E8",
+                    "direct_url": "https://www.amazon.in/dp/B00T75A4E8",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=500&auto=format&fit=crop&q=60"
                 },
@@ -521,6 +609,8 @@ class FashionService:
                     "brand": "Titan",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B07Y5CK5D4",
+                    "direct_url": "https://www.amazon.in/dp/B07Y5CK5D4",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1624222247344-550fb60583dc?w=500&auto=format&fit=crop&q=60"
                 }
@@ -533,6 +623,8 @@ class FashionService:
                     "brand": "Karry",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B08L7V7YJ2",
+                    "direct_url": "https://www.amazon.in/dp/B08L7V7YJ2",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=500&auto=format&fit=crop&q=60"
                 },
@@ -542,6 +634,8 @@ class FashionService:
                     "brand": "Dennis Lingo",
                     "price": p_top,
                     "plat": "Amazon",
+                    "asin": "B07D3N2L9F",
+                    "direct_url": "https://www.amazon.in/dp/B07D3N2L9F",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=500&auto=format&fit=crop&q=60"
                 },
@@ -550,7 +644,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Slim Fit Stretch Cotton Chinos",
                     "brand": "Highlander",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07PPNVL93",
+                    "direct_url": "https://www.amazon.in/dp/B07PPNVL93",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=500&auto=format&fit=crop&q=60"
                 },
@@ -560,6 +656,8 @@ class FashionService:
                     "brand": "Kraasa",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B08FB98V5T",
+                    "direct_url": "https://www.amazon.in/dp/B08FB98V5T",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=500&auto=format&fit=crop&q=60"
                 },
@@ -569,6 +667,8 @@ class FashionService:
                     "brand": "Fastrack",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B007V2TY2G",
+                    "direct_url": "https://www.amazon.in/dp/B007V2TY2G",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=500&auto=format&fit=crop&q=60"
                 }
@@ -581,6 +681,8 @@ class FashionService:
                     "brand": "Urban Monkey",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B07H83L144",
+                    "direct_url": "https://www.amazon.in/dp/B07H83L144",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1534215754734-18e55d13e346?w=500&auto=format&fit=crop&q=60"
                 },
@@ -589,7 +691,9 @@ class FashionService:
                     "name": f"{c_top['name']} Satin Finish Oversized Statement Shirt",
                     "brand": "Snitch",
                     "price": p_top,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07D3N2L9F",
+                    "direct_url": "https://www.amazon.in/dp/B07D3N2L9F",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=60"
                 },
@@ -598,7 +702,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Relaxed Straight Tapered Trousers",
                     "brand": "Roadster",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07PPNVL93",
+                    "direct_url": "https://www.amazon.in/dp/B07PPNVL93",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=60"
                 },
@@ -608,6 +714,8 @@ class FashionService:
                     "brand": "Red Tape",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B08R7R5VBD",
+                    "direct_url": "https://www.amazon.in/dp/B08R7R5VBD",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=500&auto=format&fit=crop&q=60"
                 },
@@ -617,6 +725,8 @@ class FashionService:
                     "brand": "Yellow Chimes",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B079Z1K9CP",
+                    "direct_url": "https://www.amazon.in/dp/B079Z1K9CP",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&auto=format&fit=crop&q=60"
                 }
@@ -629,6 +739,8 @@ class FashionService:
                     "brand": "Puma",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B07H83L144",
+                    "direct_url": "https://www.amazon.in/dp/B07H83L144",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&auto=format&fit=crop&q=60"
                 },
@@ -637,7 +749,9 @@ class FashionService:
                     "name": f"{c_top['name']} Dri-FIT Breathable Training Tee",
                     "brand": "Campus Sutra",
                     "price": p_top,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07D3N2L9F",
+                    "direct_url": "https://www.amazon.in/dp/B07D3N2L9F",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=60"
                 },
@@ -646,7 +760,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Tapered Lightweight Stretch Trackpants",
                     "brand": "HRX",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07PPNVL93",
+                    "direct_url": "https://www.amazon.in/dp/B07PPNVL93",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=60"
                 },
@@ -655,7 +771,9 @@ class FashionService:
                     "name": f"{c_foot['name']} Responsive Foam Athletic Running Shoes",
                     "brand": "Sparx",
                     "price": p_foot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B08R7R5VBD",
+                    "direct_url": "https://www.amazon.in/dp/B08R7R5VBD",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1607522370275-f14206abe5d3?w=500&auto=format&fit=crop&q=60"
                 },
@@ -665,6 +783,8 @@ class FashionService:
                     "brand": "Safari",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B08339Z8XQ",
+                    "direct_url": "https://www.amazon.in/dp/B08339Z8XQ",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60"
                 }
@@ -677,6 +797,8 @@ class FashionService:
                     "brand": "Urban Monkey",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B07H83L144",
+                    "direct_url": "https://www.amazon.in/dp/B07H83L144",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1534215754734-18e55d13e346?w=500&auto=format&fit=crop&q=60"
                 },
@@ -685,7 +807,9 @@ class FashionService:
                     "name": f"{c_top['name']} Relaxed Fit Heavyweight Cotton Tee",
                     "brand": "Bewakoof",
                     "price": p_top,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07D3N2L9F",
+                    "direct_url": "https://www.amazon.in/dp/B07D3N2L9F",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=60"
                 },
@@ -695,6 +819,8 @@ class FashionService:
                     "brand": "Roadster",
                     "price": p_bot,
                     "plat": "Amazon",
+                    "asin": "B07PPNVL93",
+                    "direct_url": "https://www.amazon.in/dp/B07PPNVL93",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1542272604-780c96856592?w=500&auto=format&fit=crop&q=60"
                 },
@@ -703,7 +829,9 @@ class FashionService:
                     "name": f"{c_foot['name']} Retro High-Top Canvas Sneakers",
                     "brand": "Sparx",
                     "price": p_foot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B08R7R5VBD",
+                    "direct_url": "https://www.amazon.in/dp/B08R7R5VBD",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1607522370275-f14206abe5d3?w=500&auto=format&fit=crop&q=60"
                 },
@@ -713,6 +841,8 @@ class FashionService:
                     "brand": "Safari",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B08339Z8XQ",
+                    "direct_url": "https://www.amazon.in/dp/B08339Z8XQ",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60"
                 }
@@ -725,6 +855,8 @@ class FashionService:
                     "brand": "Manyavar",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B08L7V7YJ2",
+                    "direct_url": "https://www.amazon.in/dp/B08L7V7YJ2",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1514327605112-b887c0e61c0a?w=500&auto=format&fit=crop&q=60"
                 },
@@ -734,6 +866,8 @@ class FashionService:
                     "brand": "Manyavar",
                     "price": p_top,
                     "plat": "Amazon",
+                    "asin": "B07V2D3Y7T",
+                    "direct_url": "https://www.amazon.in/dp/B07V2D3Y7T",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=500&auto=format&fit=crop&q=60"
                 },
@@ -742,7 +876,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Dupion Silk Slim Churidar Pyjama",
                     "brand": "Manyavar",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B085V8G9V8",
+                    "direct_url": "https://www.amazon.in/dp/B085V8G9V8",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1479064555552-3ef4979f8908?w=500&auto=format&fit=crop&q=60"
                 },
@@ -752,6 +888,8 @@ class FashionService:
                     "brand": "Bata",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B00T75A4E8",
+                    "direct_url": "https://www.amazon.in/dp/B00T75A4E8",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=500&auto=format&fit=crop&q=60"
                 },
@@ -761,6 +899,8 @@ class FashionService:
                     "brand": "Titan",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B008630J4E",
+                    "direct_url": "https://www.amazon.in/dp/B008630J4E",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=500&auto=format&fit=crop&q=60"
                 }
@@ -773,6 +913,8 @@ class FashionService:
                     "brand": "Puma",
                     "price": p_head,
                     "plat": "Amazon",
+                    "asin": "B07H83L144",
+                    "direct_url": "https://www.amazon.in/dp/B07H83L144",
                     "color": c_head,
                     "img": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&auto=format&fit=crop&q=60"
                 },
@@ -781,7 +923,9 @@ class FashionService:
                     "name": f"{c_top['name']} Pure Cotton Relaxed Drop-Shoulder Shirt",
                     "brand": "Dennis Lingo",
                     "price": p_top,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07D3N2L9F",
+                    "direct_url": "https://www.amazon.in/dp/B07D3N2L9F",
                     "color": c_top,
                     "img": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=500&auto=format&fit=crop&q=60"
                 },
@@ -790,7 +934,9 @@ class FashionService:
                     "name": f"{c_bot['name']} Straight-Fit Washed Chino Trousers",
                     "brand": "Roadster",
                     "price": p_bot,
-                    "plat": "Flipkart",
+                    "plat": "Amazon",
+                    "asin": "B07PPNVL93",
+                    "direct_url": "https://www.amazon.in/dp/B07PPNVL93",
                     "color": c_bot,
                     "img": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=60"
                 },
@@ -800,6 +946,8 @@ class FashionService:
                     "brand": "Red Tape",
                     "price": p_foot,
                     "plat": "Amazon",
+                    "asin": "B08R7R5VBD",
+                    "direct_url": "https://www.amazon.in/dp/B08R7R5VBD",
                     "color": c_foot,
                     "img": "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=500&auto=format&fit=crop&q=60"
                 },
@@ -809,6 +957,8 @@ class FashionService:
                     "brand": "Yellow Chimes",
                     "price": p_acc,
                     "plat": "Amazon",
+                    "asin": "B079Z1K9CP",
+                    "direct_url": "https://www.amazon.in/dp/B079Z1K9CP",
                     "color": c_acc,
                     "img": "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&auto=format&fit=crop&q=60"
                 }

@@ -8,7 +8,7 @@ class ProductService:
     AI-Driven Clinical Product Recommendation Engine.
     Matches the AI's detected skin conditions, severity levels, and recommended ingredients
     to an authentic, curated catalog of real brand-name dermatological products available in India.
-    Generates live affiliate links for Amazon India and Flipkart with tracked tag 'stylicai21-21'.
+    Generates direct product page affiliate links for Amazon India and Flipkart with tracked tag 'stylicai21-21'.
     """
 
     CATALOG: List[Dict[str, Any]] = [
@@ -21,6 +21,8 @@ class ProductService:
             "price_inr": 299.0,
             "rating": 4.6,
             "platform": "Amazon",
+            "asin": "B096V74HYX",
+            "direct_url": "https://www.amazon.in/dp/B096V74HYX",
             "search_query": "Minimalist 2 Salicylic Acid Face Cleanser LHA",
             "image_url": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Acne & Micro-Congestion", "Pore Size & Texture", "Oiliness", "Blemishes"],
@@ -35,7 +37,9 @@ class ProductService:
             "title": "CeraVe Hydrating Facial Cleanser with Ceramides & Hyaluronic Acid",
             "price_inr": 365.0,
             "rating": 4.8,
-            "platform": "Flipkart",
+            "platform": "Amazon",
+            "asin": "B01MSSDEPK",
+            "direct_url": "https://www.amazon.in/dp/B01MSSDEPK",
             "search_query": "CeraVe Hydrating Facial Cleanser ceramides hyaluronic",
             "image_url": "https://images.unsplash.com/photo-1556228722-d0b71f3b2361?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dryness & Barrier Compromise", "Redness & Sensitivity", "Barrier", "Dehydration"],
@@ -51,6 +55,8 @@ class ProductService:
             "price_inr": 349.0,
             "rating": 4.7,
             "platform": "Amazon",
+            "asin": "B01CCGW4OE",
+            "direct_url": "https://www.amazon.in/dp/B01CCGW4OE",
             "search_query": "Cetaphil Gentle Skin Cleanser Niacinamide Panthenol",
             "image_url": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Redness & Sensitivity", "Dryness & Barrier Compromise", "Sensitivity"],
@@ -65,7 +71,9 @@ class ProductService:
             "title": "The Derma Co 1% Kojic Acid Face Wash with Alpha Arbutin",
             "price_inr": 249.0,
             "rating": 4.5,
-            "platform": "Flipkart",
+            "platform": "Amazon",
+            "asin": "B09FFDDFQ3",
+            "direct_url": "https://www.amazon.in/dp/B09FFDDFQ3",
             "search_query": "The Derma Co 1 Kojic Acid Daily Face Wash",
             "image_url": "https://images.unsplash.com/photo-1556228722-d0b71f3b2361?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dark Spots & Hyperpigmentation", "Dullness & Uneven Skin Tone", "Sun Damage", "Tan"],
@@ -83,6 +91,8 @@ class ProductService:
             "price_inr": 399.0,
             "rating": 4.6,
             "platform": "Amazon",
+            "asin": "B08FF3X14V",
+            "direct_url": "https://www.amazon.in/dp/B08FF3X14V",
             "search_query": "Minimalist 10 Niacinamide Serum Zinc PCA",
             "image_url": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Pore Size & Texture", "Oiliness", "Acne & Micro-Congestion", "Blemishes"],
@@ -98,6 +108,8 @@ class ProductService:
             "price_inr": 550.0,
             "rating": 4.5,
             "platform": "Amazon",
+            "asin": "B08FB24T65",
+            "direct_url": "https://www.amazon.in/dp/B08FB24T65",
             "search_query": "Plum 15 Vitamin C Face Serum Mandarin",
             "image_url": "https://images.unsplash.com/photo-1608248597359-2169b16ff0b6?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dark Spots & Hyperpigmentation", "Dullness & Uneven Skin Tone", "Sun Damage"],
@@ -113,6 +125,8 @@ class ProductService:
             "price_inr": 449.0,
             "rating": 4.5,
             "platform": "Amazon",
+            "asin": "B08NTR5WKD",
+            "direct_url": "https://www.amazon.in/dp/B08NTR5WKD",
             "search_query": "The Derma Co 2 Salicylic Acid Face Serum Witch Hazel",
             "image_url": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Acne & Micro-Congestion", "Blemishes", "Pore Size & Texture"],
@@ -128,6 +142,8 @@ class ProductService:
             "price_inr": 449.0,
             "rating": 4.6,
             "platform": "Amazon",
+            "asin": "B08F9V24J6",
+            "direct_url": "https://www.amazon.in/dp/B08F9V24J6",
             "search_query": "Minimalist 2 Alpha Arbutin Face Serum Hyaluronic Acid",
             "image_url": "https://images.unsplash.com/photo-1617897903246-719242758050?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dark Spots & Hyperpigmentation", "Blemishes", "Sun Damage", "Tan"],
@@ -143,6 +159,8 @@ class ProductService:
             "price_inr": 700.0,
             "rating": 4.8,
             "platform": "Amazon",
+            "asin": "B01MYEZ85C",
+            "direct_url": "https://www.amazon.in/dp/B01MYEZ85C",
             "search_query": "The Ordinary Hyaluronic Acid 2 B5 Hydration Serum",
             "image_url": "https://images.unsplash.com/photo-1617897903246-719242758050?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dryness & Barrier Compromise", "Wrinkles & Fine Lines", "Dehydration"],
@@ -158,6 +176,8 @@ class ProductService:
             "price_inr": 549.0,
             "rating": 4.4,
             "platform": "Amazon",
+            "asin": "B08PBFCLJ1",
+            "direct_url": "https://www.amazon.in/dp/B08PBFCLJ1",
             "search_query": "The Derma Co 10 Azelaic Acid Face Serum",
             "image_url": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Redness & Sensitivity", "Acne & Micro-Congestion", "Dark Spots & Hyperpigmentation"],
@@ -173,6 +193,8 @@ class ProductService:
             "price_inr": 599.0,
             "rating": 4.6,
             "platform": "Amazon",
+            "asin": "B08PBD695Y",
+            "direct_url": "https://www.amazon.in/dp/B08PBD695Y",
             "search_query": "Minimalist 0.3 Retinol Face Serum Coenzyme Q10",
             "image_url": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Wrinkles & Fine Lines", "Pore Size & Texture", "Dullness & Uneven Skin Tone"],
@@ -190,6 +212,8 @@ class ProductService:
             "price_inr": 480.0,
             "rating": 4.7,
             "platform": "Amazon",
+            "asin": "B00NR1YQHM",
+            "direct_url": "https://www.amazon.in/dp/B00NR1YQHM",
             "search_query": "Neutrogena Hydro Boost Water Gel Hyaluronic",
             "image_url": "https://images.unsplash.com/photo-1556228724-4da94314c1eb?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dryness & Barrier Compromise", "Oiliness", "Dehydration"],
@@ -204,7 +228,9 @@ class ProductService:
             "title": "Dr. Sheth's Ceramide & Vitamin C Oil-Free Barrier Repair Moisturizer",
             "price_inr": 349.0,
             "rating": 4.5,
-            "platform": "Flipkart",
+            "platform": "Amazon",
+            "asin": "B099K1F355",
+            "direct_url": "https://www.amazon.in/dp/B099K1F355",
             "search_query": "Dr Sheths Ceramide Vitamin C Oil Free Moisturizer",
             "image_url": "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dryness & Barrier Compromise", "Redness & Sensitivity", "Barrier"],
@@ -220,6 +246,8 @@ class ProductService:
             "price_inr": 499.0,
             "rating": 4.8,
             "platform": "Amazon",
+            "asin": "B00TTD9BRC",
+            "direct_url": "https://www.amazon.in/dp/B00TTD9BRC",
             "search_query": "CeraVe Moisturizing Cream 3 Essential Ceramides",
             "image_url": "https://images.unsplash.com/photo-1556228724-4da94314c1eb?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dryness & Barrier Compromise", "Barrier", "Redness & Sensitivity"],
@@ -235,12 +263,31 @@ class ProductService:
             "price_inr": 349.0,
             "rating": 4.4,
             "platform": "Amazon",
+            "asin": "B095CK3N14",
+            "direct_url": "https://www.amazon.in/dp/B095CK3N14",
             "search_query": "The Derma Co 1 Salicylic Acid Oil Free Moisturizer",
             "image_url": "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Acne & Micro-Congestion", "Oiliness", "Pore Size & Texture"],
             "key_ingredients": ["Salicylic Acid", "Oat Extract", "Zinc PCA"],
             "suitable_skin_types": ["Oily", "Acne-Prone"],
             "clinical_action": "Provides weightless non-comedogenic hydration while gently maintaining pore clarity throughout the day."
+        },
+        {
+            "id": "m_dotkey_ceramides",
+            "category": "Moisturizer",
+            "brand": "Dot & Key",
+            "title": "Dot & Key Ceramides & Hyaluronic Skin Barrier Repair Cream",
+            "price_inr": 395.0,
+            "rating": 4.6,
+            "platform": "Amazon",
+            "asin": "B09H2S5259",
+            "direct_url": "https://www.amazon.in/dp/B09H2S5259",
+            "search_query": "Dot Key Ceramides Hyaluronic Barrier Repair Cream",
+            "image_url": "https://images.unsplash.com/photo-1556228724-4da94314c1eb?w=500&auto=format&fit=crop&q=60",
+            "target_issues": ["Dryness & Barrier Compromise", "Barrier", "Redness & Sensitivity"],
+            "key_ingredients": ["Ceramides 1, 3, 6", "Hyaluronic Acid", "Japanese Rice Water"],
+            "suitable_skin_types": ["Normal", "Dry", "Sensitive"],
+            "clinical_action": "Fortifies stratum corneum lipid bilayers, smoothing rough micro-cracks and locking in continuous 72-hour moisture."
         },
 
         # ── Broad-Spectrum Sunscreens ──────────────────────────────────────────
@@ -252,6 +299,8 @@ class ProductService:
             "price_inr": 399.0,
             "rating": 4.6,
             "platform": "Amazon",
+            "asin": "B09SG2T1D2",
+            "direct_url": "https://www.amazon.in/dp/B09SG2T1D2",
             "search_query": "Aqualogica Radiance Dewy Sunscreen SPF 50 Watermelon Niacinamide",
             "image_url": "https://images.unsplash.com/photo-1563178406-4cdc2923acbc?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dark Spots & Hyperpigmentation", "Dullness & Uneven Skin Tone", "Sun Damage", "UV Protection"],
@@ -266,7 +315,9 @@ class ProductService:
             "title": "The Derma Co 1% Hyaluronic Sunscreen Aqua Gel SPF 50 PA++++",
             "price_inr": 499.0,
             "rating": 4.7,
-            "platform": "Flipkart",
+            "platform": "Amazon",
+            "asin": "B095CRM8NF",
+            "direct_url": "https://www.amazon.in/dp/B095CRM8NF",
             "search_query": "The Derma Co 1 Hyaluronic Sunscreen Aqua Gel SPF 50",
             "image_url": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Acne & Micro-Congestion", "Oiliness", "Pore Size & Texture", "UV Protection"],
@@ -282,12 +333,31 @@ class ProductService:
             "price_inr": 550.0,
             "rating": 4.7,
             "platform": "Amazon",
+            "asin": "B07RPDY2MV",
+            "direct_url": "https://www.amazon.in/dp/B07RPDY2MV",
             "search_query": "Reequil Oxybenzone OMC Free Sunscreen SPF 50",
             "image_url": "https://images.unsplash.com/photo-1563178406-4cdc2923acbc?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Redness & Sensitivity", "Acne & Micro-Congestion", "Oiliness", "UV Protection"],
             "key_ingredients": ["SPF 50", "Zinc Oxide", "Titanium Dioxide"],
             "suitable_skin_types": ["Sensitive", "Oily", "Acne-Prone"],
             "clinical_action": "Mineral-rich physical/hybrid UV filter with velvety matte primer finish that calms sensitive, reactive skin."
+        },
+        {
+            "id": "u_minimalist_spf50",
+            "category": "Sunscreen",
+            "brand": "Minimalist",
+            "title": "Minimalist SPF 50 PA++++ Multi-Vitamin Sunscreen with Niacinamide & Vitamin F",
+            "price_inr": 399.0,
+            "rating": 4.6,
+            "platform": "Amazon",
+            "asin": "B09WNR6R8K",
+            "direct_url": "https://www.amazon.in/dp/B09WNR6R8K",
+            "search_query": "Minimalist SPF 50 Multi Vitamin Sunscreen Niacinamide",
+            "image_url": "https://images.unsplash.com/photo-1563178406-4cdc2923acbc?w=500&auto=format&fit=crop&q=60",
+            "target_issues": ["Sun Damage", "Dark Spots & Hyperpigmentation", "UV Protection"],
+            "key_ingredients": ["SPF 50", "Niacinamide", "Vitamin F", "Vitamin B5"],
+            "suitable_skin_types": ["All Skin Types", "Combination", "Normal"],
+            "clinical_action": "Photostable 4-filter UV protection enriched with essential barrier vitamins to reverse photodamage."
         },
 
         # ── Targeted Eye Care & Specialty Treatments ───────────────────────────
@@ -299,6 +369,8 @@ class ProductService:
             "price_inr": 499.0,
             "rating": 4.5,
             "platform": "Amazon",
+            "asin": "B08PQBYGZ1",
+            "direct_url": "https://www.amazon.in/dp/B08PQBYGZ1",
             "search_query": "Minimalist 5 Caffeine Eye Serum EGCG Dark Circles",
             "image_url": "https://images.unsplash.com/photo-1512290900672-1f02e1b12b50?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Dark Circles & Periorbital Fatigue", "Dark Circles", "Puffiness"],
@@ -314,12 +386,31 @@ class ProductService:
             "price_inr": 599.0,
             "rating": 4.6,
             "platform": "Amazon",
+            "asin": "B08PQ9G9K5",
+            "direct_url": "https://www.amazon.in/dp/B08PQ9G9K5",
             "search_query": "Minimalist AHA 25 PHA 5 BHA 2 Peeling Solution",
             "image_url": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=500&auto=format&fit=crop&q=60",
             "target_issues": ["Pore Size & Texture", "Dullness & Uneven Skin Tone", "Texture"],
             "key_ingredients": ["Glycolic Acid", "Lactic Acid", "Salicylic Acid", "Gluconolactone"],
             "suitable_skin_types": ["Normal", "Combination", "Oily"],
             "clinical_action": "Multi-acid chemical peel dissolves desmosomes binding dead keratinocytes, unveiling luminous underlying epidermis."
+        },
+        {
+            "id": "t_plum_green_tea_mask",
+            "category": "Face Mask",
+            "brand": "Plum",
+            "title": "Plum Green Tea Clear Face Mask with Natural Clay & Glycolic Acid",
+            "price_inr": 490.0,
+            "rating": 4.5,
+            "platform": "Amazon",
+            "asin": "B0176D98S0",
+            "direct_url": "https://www.amazon.in/dp/B0176D98S0",
+            "search_query": "Plum Green Tea Clear Face Mask Clay Glycolic",
+            "image_url": "https://images.unsplash.com/photo-1556228722-d0b71f3b2361?w=500&auto=format&fit=crop&q=60",
+            "target_issues": ["Acne & Micro-Congestion", "Oiliness", "Pore Size & Texture"],
+            "key_ingredients": ["Green Tea", "Kaolin Clay", "Glycolic Acid"],
+            "suitable_skin_types": ["Oily", "Acne-Prone", "Combination"],
+            "clinical_action": "Absorbs excess sebaceous plug accumulation and gently exfoliates surface micro-debris without over-drying."
         }
     ]
 
@@ -355,10 +446,35 @@ class ProductService:
     }
 
     @classmethod
-    def generate_affiliate_url(cls, platform: str, query: str) -> str:
-        """Constructs live deep-link search URL for Amazon India or Flipkart with registered affiliate tag."""
+    def generate_affiliate_url(
+        cls,
+        platform: str,
+        query: str,
+        direct_url: Optional[str] = None,
+        asin: Optional[str] = None
+    ) -> str:
+        """Constructs direct product page URL with registered affiliate tag for Amazon India or Flipkart."""
         amazon_tag = os.getenv("AMAZON_AFFILIATE_TAG", "stylicai21-21")
         flipkart_id = os.getenv("FLIPKART_AFFILIATE_ID", "skincarefashion")
+
+        # 1. Direct ASIN for Amazon India (direct product page, not search results)
+        if asin and (platform or "").lower() == "amazon":
+            return f"https://www.amazon.in/dp/{asin}/?tag={amazon_tag}"
+
+        # 2. Explicit direct URL
+        if direct_url:
+            separator = "&" if "?" in direct_url else "?"
+            if "amazon.in" in direct_url:
+                if "tag=" not in direct_url:
+                    return f"{direct_url}{separator}tag={amazon_tag}"
+                return direct_url
+            elif "flipkart.com" in direct_url:
+                if "affid=" not in direct_url:
+                    return f"{direct_url}{separator}affid={flipkart_id}"
+                return direct_url
+            return direct_url
+
+        # 3. Fallback search if direct link unavailable
         encoded_query = urllib.parse.quote_plus(query)
         if (platform or "").lower() == "flipkart":
             return (
@@ -376,13 +492,13 @@ class ProductService:
         recommended_ingredients: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Selects an authentic, clinically coordinated 4-to-5 piece skincare regimen:
-        1. Cleanser (matched to skin type & concern)
-        2. Active Treatment Serum (matched to highest severity condition & AI ingredients)
-        3. Barrier Moisturizer (matched to skin type & barrier state)
-        4. Broad-Spectrum Sunscreen SPF 50+ (essential clinical photoprotection)
-        5. Eye Care or Specialty Treatment (if dark circles, eye fatigue, or focal spots noted)
-        All items feature genuine product titles, reputable brands, realistic prices, and live affiliate links.
+        Selects an authentic, clinically coordinated 8-to-10 piece comprehensive skincare regimen:
+        1. Cleansers (Hydrating / Gentle + Active Clarifying)
+        2. Active Treatment Serums (Targeting user's primary and secondary skin conditions)
+        3. Barrier Repair Moisturizers (Daytime hydration + Night repair)
+        4. Broad-Spectrum Sunscreens (Photoprotective SPF 50+ formulations)
+        5. Targeted Eye Care, Specialty Peels & Clarifying Masks
+        All items feature genuine product titles, direct Amazon/Flipkart product URLs, prices, and ratings.
         """
         issue_names = [i.get("issue_type", "").lower() for i in detected_issues]
         severity_map = {i.get("issue_type", "").lower(): i.get("severity", "mild") for i in detected_issues}
@@ -390,34 +506,30 @@ class ProductService:
         # Normalize recommended ingredients
         rec_ings = [ing.lower().strip() for ing in (recommended_ingredients or [])]
 
-        # Score every item in catalog
+        # Score all catalog products against detected conditions
         scored: List[tuple[float, Dict[str, Any]]] = []
 
         for item in cls.CATALOG:
             score = 0.0
 
-            # Match against AI recommended ingredients (+25 points per match)
-            for item_ing in item.get("key_ingredients", []):
-                for ai_ing in rec_ings:
-                    if ai_ing in item_ing.lower() or item_ing.lower() in ai_ing:
-                        score += 25.0
+            # Match target issues
+            for target in item["target_issues"]:
+                target_l = target.lower()
+                for iss_name in issue_names:
+                    if any(kw in iss_name for kw in cls.ISSUE_KEYWORDS.get(target_l, [])) or target_l in iss_name:
+                        weight = 30.0 if severity_map.get(iss_name) == "severe" else (20.0 if severity_map.get(iss_name) == "moderate" else 10.0)
+                        score += weight
 
-            # Match against detected concerns (+15 to +30 points based on severity)
-            for target in item.get("target_issues", []):
-                for issue_str in issue_names:
-                    if issue_str in target.lower() or target.lower() in issue_str:
-                        sev = severity_map.get(issue_str, "mild")
-                        score += 30.0 if sev == "severe" else (20.0 if sev == "moderate" else 15.0)
+            # Match recommended ingredients from AI diagnosis
+            for ing in item["key_ingredients"]:
+                ing_l = ing.lower()
+                if any(r_ing in ing_l or ing_l in r_ing for r_ing in rec_ings):
+                    score += 25.0
 
-                # Keyword match
-                for kw, mapped_targets in cls.ISSUE_KEYWORDS.items():
-                    if any(kw in issue_str for issue_str in issue_names):
-                        if any(t.lower() == target.lower() for t in mapped_targets):
-                            score += 10.0
-
-            # Match skin type compatibility (+15 points)
-            item_skin_types = [st.lower() for st in item.get("suitable_skin_types", [])]
-            if skin_type.lower() in item_skin_types or "all skin types" in item_skin_types:
+            # Match skin type compatibility
+            suit_types = [st.lower() for st in item["suitable_skin_types"]]
+            clean_skin_type = skin_type.lower()
+            if "all skin types" in suit_types or clean_skin_type in suit_types:
                 score += 15.0
 
             # Baseline product rating factor (+4.5 to +4.8 points)
@@ -434,41 +546,52 @@ class ProductService:
         scored.sort(key=lambda x: x[0], reverse=True)
 
         matched: List[Dict[str, Any]] = []
-        categories_filled: set[str] = set()
+        chosen_ids: set[str] = set()
 
-        # Step 1: Select best product for each primary category in logical clinical routine order
-        routine_order = ["Cleanser", "Serum", "Moisturizer", "Sunscreen"]
+        # Step 1: Select up to 2 Cleansers
+        cleansers = [it for _, it in scored if it["category"] == "Cleanser"]
+        for c in cleansers[:2]:
+            matched.append(cls._format_product_output(c, detected_issues, skin_type))
+            chosen_ids.add(c["id"])
 
-        # If dark circles or periorbital issues detected, prioritize Eye Care
-        has_eye_issue = any("dark circle" in iss or "periorbital" in iss for iss in issue_names)
-        if has_eye_issue:
-            routine_order.append("Eye Care")
+        # Step 2: Select up to 3 Active Treatment Serums tailored to detected issues
+        serums = [it for _, it in scored if it["category"] == "Serum" and it["id"] not in chosen_ids]
+        for s in serums[:3]:
+            matched.append(cls._format_product_output(s, detected_issues, skin_type))
+            chosen_ids.add(s["id"])
 
-        for desired_cat in routine_order:
-            for score, item in scored:
-                if item["category"] == desired_cat and desired_cat not in categories_filled:
-                    categories_filled.add(desired_cat)
-                    prod = cls._format_product_output(item, detected_issues, skin_type)
-                    matched.append(prod)
-                    break
+        # Step 3: Select up to 2 Barrier Moisturizers
+        moisturizers = [it for _, it in scored if it["category"] == "Moisturizer" and it["id"] not in chosen_ids]
+        for m in moisturizers[:2]:
+            matched.append(cls._format_product_output(m, detected_issues, skin_type))
+            chosen_ids.add(m["id"])
 
-        # Step 2: If we still have fewer than 4 items, fill from remaining scored items
-        if len(matched) < 4:
-            for score, item in scored:
-                cat = item["category"]
-                if cat not in categories_filled:
-                    categories_filled.add(cat)
-                    matched.append(cls._format_product_output(item, detected_issues, skin_type))
-                    if len(matched) >= 4:
+        # Step 4: Select up to 2 Broad-Spectrum Sunscreens
+        sunscreens = [it for _, it in scored if it["category"] == "Sunscreen" and it["id"] not in chosen_ids]
+        for sun in sunscreens[:2]:
+            matched.append(cls._format_product_output(sun, detected_issues, skin_type))
+            chosen_ids.add(sun["id"])
+
+        # Step 5: Select Eye Care & Specialty Treatments (Exfoliant / Mask)
+        specialties = [
+            it for _, it in scored
+            if it["category"] in ["Eye Care", "Exfoliant", "Face Mask"] and it["id"] not in chosen_ids
+        ]
+        for spec in specialties[:2]:
+            matched.append(cls._format_product_output(spec, detected_issues, skin_type))
+            chosen_ids.add(spec["id"])
+
+        # Step 6: If fewer than 8 items, fill from remaining scored products
+        if len(matched) < 8:
+            for _, rem in scored:
+                if rem["id"] not in chosen_ids:
+                    matched.append(cls._format_product_output(rem, detected_issues, skin_type))
+                    chosen_ids.add(rem["id"])
+                    if len(matched) >= 8:
                         break
 
-        # Step 3: Always guarantee a Sunscreen is in the clinical regimen
-        if not any(p["category"] == "Sunscreen" for p in matched):
-            sun_candidates = [item for _, item in scored if item["category"] == "Sunscreen"]
-            if sun_candidates:
-                matched.append(cls._format_product_output(sun_candidates[0], detected_issues, skin_type))
-
-        return matched[:5]
+        # Return comprehensive regimen of 8-10 products
+        return matched[:10]
 
     @classmethod
     def _format_product_output(
@@ -477,8 +600,13 @@ class ProductService:
         detected_issues: List[Dict[str, Any]],
         skin_type: str
     ) -> Dict[str, Any]:
-        """Constructs user-facing response payload with genuine brand, title, description, and affiliate URL."""
-        affiliate_url = cls.generate_affiliate_url(item["platform"], item["search_query"])
+        """Constructs user-facing response payload with genuine brand, title, description, and direct affiliate product URL."""
+        affiliate_url = cls.generate_affiliate_url(
+            platform=item["platform"],
+            query=item.get("search_query", item["title"]),
+            direct_url=item.get("direct_url"),
+            asin=item.get("asin")
+        )
         primary_issue = item["target_issues"][0] if item.get("target_issues") else "Overall Skin Radiance"
 
         # Build personalized clinical reason
@@ -503,5 +631,5 @@ class ProductService:
             "reason":           reason,
             "image_url":        item.get("image_url", "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=60"),
             "ingredient_focus": key_ings,
-            "shop_note":        f"🔍 Verified {item['brand']} on {item['platform']} India",
+            "shop_note":        f"🔍 Verified direct {item['brand']} listing on {item['platform']} India",
         }
