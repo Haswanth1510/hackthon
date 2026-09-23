@@ -168,7 +168,7 @@ class ProductService:
     def generate_affiliate_url(cls, platform: str, query: str) -> str:
         """Constructs live deep-link search/product URL for Amazon India or Flipkart with custom affiliate tags."""
         import os
-        amazon_tag = os.getenv("AMAZON_AFFILIATE_TAG", "skincarefashion-21")
+        amazon_tag = os.getenv("AMAZON_AFFILIATE_TAG", "stylicai21-21")
         flipkart_id = os.getenv("FLIPKART_AFFILIATE_ID", "skincarefashion")
         
         encoded_query = urllib.parse.quote_plus(query)

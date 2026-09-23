@@ -56,7 +56,7 @@ services:
         sync: false          # Set in Render Dashboard → Environment (long random string)
 
       - key: AMAZON_AFFILIATE_TAG
-        value: skincarefashion-21
+        value: stylicai21-21
 
       - key: FLIPKART_AFFILIATE_ID
         value: skincarefashion
