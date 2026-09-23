@@ -60,9 +60,12 @@ const App = {
         this.state.currentUser = freshUser;
         this.updateUserUI(freshUser);
         this.unlockApp();
+        this.switchView("view-landing");
         return;
       } catch (err) {
         console.warn("[Auth] Session expired or invalid:", err);
+        // Token is invalid — clear storage and force login
+        API.clearUser();
         this.state.currentUser = null;
         this.updateUserUI(null);
       }
@@ -70,8 +73,8 @@ const App = {
       this.state.currentUser = null;
       this.updateUserUI(null);
     }
-    this.unlockApp();
-    this.switchView("view-landing");
+    // Not authenticated — show the auth gate, lock the app
+    this.showAuthGate();
   },
 
   updateUserUI(user) {
@@ -112,7 +115,20 @@ const App = {
     });
   },
 
+  // Routes that require the user to be logged in
+  _protectedViews: ["view-scanner", "view-report", "view-progress", "view-tracker", "view-profile"],
+
   switchView(viewId) {
+    // ── Auth Guard ──────────────────────────────────────────
+    // If user is not logged in and tries to access a protected view,
+    // show the auth gate instead.
+    if (this._protectedViews.includes(viewId) && !this.state.currentUser) {
+      this.showAuthGate();
+      this.showToast("Please sign in to access this feature.", "warning");
+      return;
+    }
+    // ────────────────────────────────────────────────────────
+
     if (viewId === "view-landing") {
       document.body.classList.add("view-is-landing");
     } else {
@@ -1732,6 +1748,7 @@ const App = {
           this.updateUserUI(res.user);
           localStorage.setItem("Stylic.AI_has_account", "true");
           this.unlockApp();
+          this.switchView("view-landing");
           this.showToast(`Welcome back, ${res.user.full_name}!`, "success");
         } catch (err) {
           this.showToast(`Login failed: ${err.message}`, "danger");
@@ -1759,6 +1776,7 @@ const App = {
           this.updateUserUI(res.user);
           localStorage.setItem("Stylic.AI_has_account", "true");
           this.unlockApp();
+          this.switchView("view-landing");
           this.showToast(`Account created! Welcome, ${res.user.full_name || 'User'}!`, "success");
         } catch (err) {
           this.showToast(`Registration failed: ${err.message}`, "danger");
@@ -1778,6 +1796,11 @@ const App = {
     } else {
       this.switchGateView("signup");
     }
+  },
+
+  // Alias used by auth guards throughout the app
+  showAuthGate() {
+    this.lockApp();
   },
 
   unlockApp() {

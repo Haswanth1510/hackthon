@@ -23,6 +23,12 @@ const API = {
     else localStorage.removeItem("user");
   },
 
+  // Clear both token and user – use when a session is expired or invalid
+  clearUser() {
+    this.setToken(null);
+    this.setUser(null);
+  },
+
   async request(endpoint, options = {}) {
     const headers = {
       "Content-Type": "application/json",
