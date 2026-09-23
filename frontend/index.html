@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stylic.AI — Clinical Skin & Style Intelligence</title>
+  <meta name="description" content="AI-powered clinical skin analysis and head-to-toe fashion intelligence with personalized skincare regimens and outfit curation.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+  <!-- MediaPipe Face Mesh & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+  <!-- Tailwind CSS CDN & Design System Config (Preflight disabled to preserve custom styling) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      corePlugins: {
+        preflight: false
+      },
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-error": "#ffffff",
+            "on-primary-fixed": "#002021",
+            "on-secondary-fixed-variant": "#3323cc",
+            "secondary-fixed": "#e2dfff",
+            "tertiary-container": "#29c1df",
+            "secondary-container": "#645efb",
+            "inverse-on-surface": "#eef0ff",
+            "surface": "#faf8ff",
+            "primary-container": "#00c4cc",
+            "primary": "#00696e",
+            "background": "#faf8ff",
+            "secondary-fixed-dim": "#c3c0ff",
+            "on-surface": "#131b2e",
+            "on-primary": "#ffffff",
+            "surface-bright": "#faf8ff",
+            "on-tertiary-fixed": "#001f26",
+            "on-background": "#131b2e",
+            "on-error-container": "#93000a",
+            "inverse-surface": "#283044",
+            "outline": "#6c7a7a",
+            "on-secondary-container": "#fffbff",
+            "surface-dim": "#d2d9f4",
+            "primary-fixed": "#63f7ff",
+            "surface-container-lowest": "#ffffff",
+            "error-container": "#ffdad6",
+            "outline-variant": "#bbc9ca",
+            "tertiary-fixed": "#acedff",
+            "secondary": "#4b41e1",
+            "surface-container-highest": "#dae2fd",
+            "on-primary-container": "#004c4f",
+            "on-surface-variant": "#3c494a",
+            "on-primary-fixed-variant": "#004f53",
+            "surface-container-low": "#f2f3ff",
+            "inverse-primary": "#3cdae2",
+            "on-tertiary": "#ffffff",
+            "surface-variant": "#dae2fd",
+            "on-secondary-fixed": "#0f0069",
+            "surface-tint": "#00696e",
+            "surface-container-high": "#e2e7ff",
+            "on-tertiary-container": "#004b58",
+            "on-secondary": "#ffffff",
+            "tertiary-fixed-dim": "#4cd7f6",
+            "tertiary": "#00687a",
+            "surface-container": "#eaedff",
+            "error": "#ba1a1a",
+            "on-tertiary-fixed-variant": "#004e5c",
+            "primary-fixed-dim": "#3cdae2"
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          spacing: {
+            "space-md": "1rem",
+            "space-xl": "2.5rem",
+            "space-2xl": "4rem",
+            "margin": "3rem",
+            "gutter": "1.5rem",
+            "space-sm": "0.5rem",
+            "margin-mobile": "1.25rem",
+            "gutter-mobile": "1rem",
+            "space-xs": "0.25rem",
+            "space-lg": "1.5rem"
+          },
+          fontFamily: {
+            "headline-xl": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-md": ["Plus Jakarta Sans", "sans-serif"],
+            "display-lg-mobile": ["Plus Jakarta Sans", "sans-serif"],
+            "label-lg": ["Space Grotesk", "sans-serif"],
+            "display-lg": ["Plus Jakarta Sans", "sans-serif"],
+            "label-sm": ["Space Grotesk", "sans-serif"],
+            "headline-xl-mobile": ["Plus Jakarta Sans", "sans-serif"],
+            "label-md": ["Space Grotesk", "sans-serif"],
+            "body-sm": ["Manrope", "sans-serif"],
+            "body-md": ["Manrope", "sans-serif"],
+            "headline-sm": ["Plus Jakarta Sans", "sans-serif"],
+            "body-xl": ["Manrope", "sans-serif"]
+          },
+          fontSize: {
+            "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.025em", "fontWeight": "600" }],
+            "headline-md": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "display-lg-mobile": ["38px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "display-lg": ["56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "500" }],
+            "headline-xl-mobile": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "500" }],
+            "body-sm": ["13px", { "lineHeight": "20px", "letterSpacing": "0.005em", "fontWeight": "400" }],
+            "body-md": ["15px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-sm": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-xl": ["18px", { "lineHeight": "28px", "letterSpacing": "-0.005em", "fontWeight": "400" }]
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Stylic.AI Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css?v=2.5">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="/static/css/stylic_icon.jpg">
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen view-is-landing">
+
+  <!-- Atmospheric Background -->
+  <div class="bg-blurs" aria-hidden="true">
+    <div class="bg-blur-3"></div>
+  </div>
+
+  <!-- ================= PRE-ENTRY AUTH GATE ================= -->
+  <div id="authGate" class="auth-gate-overlay hidden">
+    <div class="auth-gate-card">
+      <!-- Logo & Brand -->
+      <div class="gate-logo-wrap">
+        <div class="gate-logo-icon">
+          <img src="/static/css/stylic_icon.jpg" alt="Stylic.AI Logo">
+        </div>
+        <h2 class="gate-title">Stylic<span class="gradient-text">.AI</span></h2>
+        <p class="gate-subtitle">Clinical Skin &amp; Head-to-Toe Style Intelligence</p>
+      </div>
+
+      <!-- Sign In View -->
+      <div id="gatePasswordView" class="gate-view" style="display: block;">
+        <p class="gate-form-title">Welcome back</p>
+        <p class="gate-form-subtitle">Sign in to your personalized dashboard</p>
+
+        <form id="formGateLogin" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label" for="gateLoginEmail">
+              <span class="material-symbols-outlined" style="font-size:14px; vertical-align: middle; color: var(--primary);">mail</span>
+              Email Address
+            </label>
+            <input type="email" id="gateLoginEmail" class="form-input" placeholder="name@example.com" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="gateLoginPassword">
+              <span class="material-symbols-outlined" style="font-size:14px; vertical-align: middle; color: var(--primary);">lock</span>
+              Password
+            </label>
+            <input type="password" id="gateLoginPassword" class="form-input" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem; padding: 0.9rem; font-size: 0.95rem; letter-spacing: -0.01em;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+            Sign In to Stylic.AI
+          </button>
+        </form>
+
+        <div class="gate-footer-links">
+          <span style="color: var(--on-surface-variant); font-size: 0.82rem;">Don't have an account?&nbsp;</span>
+          <button type="button" class="link-btn" id="btnSwitchToSignUpFromPassword">Create Account</button>
+        </div>
+      </div>
+
+      <!-- Create Account View -->
+      <div id="gateSignUpView" class="gate-view" style="display: none;">
+        <p class="gate-form-title">Create your account</p>
+        <p class="gate-form-subtitle">Sign up to unlock clinical diagnostics &amp; personalized styling</p>
+
+        <form id="formGateSignUp" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label" for="gateRegFullName">Full Name</label>
+            <input type="text" id="gateRegFullName" class="form-input" placeholder="Jane Doe" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="gateRegEmail">Email Address</label>
+            <input type="email" id="gateRegEmail" class="form-input" placeholder="name@example.com" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="gateRegPassword">Password (6+ chars)</label>
+            <input type="password" id="gateRegPassword" class="form-input" placeholder="••••••••" minlength="6" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem; padding: 0.9rem; font-size: 0.95rem;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">person_add</span>
+            Create Account &amp; Continue
+          </button>
+        </form>
+
+        <div class="gate-footer-links">
+          <span style="color: var(--on-surface-variant); font-size: 0.82rem;">Already have an account?&nbsp;</span>
+          <button type="button" class="link-btn" id="btnSwitchToLoginFromSignUp">Sign In</button>
+        </div>
+        <div class="gate-footer-links" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--surface-container-high);">
+          <button type="button" class="link-btn" onclick="App.unlockApp(); App.switchView('view-landing');" style="color: var(--primary); font-weight: 600; font-size: 0.85rem;">
+            Explore Stylic.AI as Guest &rarr;
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= APP HEADER ================= -->
+  <nav class="navbar">
+    <!-- Brand -->
+    <a href="#" class="brand-logo" onclick="App.switchView('view-landing'); return false;">
+      <img src="/static/css/stylic_icon.jpg" alt="Stylic.AI" class="brand-logo-img">
+      <div class="brand-name">
+        <span class="brand-name-main">Stylic<span class="gradient-text">.AI</span></span>
+      </div>
+    </a>
+
+    <!-- Navigation Links -->
+    <ul class="nav-links">
+      <li>
+        <button class="nav-btn active" onclick="App.switchView('view-landing')" data-view="view-landing" id="navBtnLanding">
+          <span class="nav-icon material-symbols-outlined">home</span>
+          <span class="nav-label">Home</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-btn" onclick="App.switchView('view-scanner')" data-view="view-scanner" id="navBtnScanner">
+          <span class="nav-icon material-symbols-outlined">document_scanner</span>
+          <span class="nav-label">Scanner</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-btn" onclick="App.switchView('view-report')" data-view="view-report" id="navBtnReport">
+          <span class="nav-icon material-symbols-outlined">clinical_notes</span>
+          <span class="nav-label">Report</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-btn" onclick="App.switchView('view-tracker')" data-view="view-tracker" id="navBtnTracker">
+          <span class="nav-icon material-symbols-outlined">timeline</span>
+          <span class="nav-label">Timeline</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-btn" onclick="App.switchView('view-profile')" data-view="view-profile" id="navBtnProfile">
+          <span class="nav-icon material-symbols-outlined">verified_user</span>
+          <span class="nav-label">Profile</span>
+        </button>
+      </li>
+    </ul>
+
+    <!-- Auth Box -->
+    <div class="auth-box">
+      <!-- Guest state -->
+      <div id="navGuestState" style="display: flex; gap: 0.5rem;">
+        <button class="btn btn-secondary btn-sm" onclick="App.lockApp()">Sign In</button>
+      </div>
+      <!-- Logged in state -->
+      <div id="navLoggedInState" style="display: none; align-items: center; gap: 0.6rem; cursor: pointer;" onclick="App.switchView('view-profile')">
+        <div class="user-avatar-ring">
+          <div class="user-avatar-circle" id="navAvatarInitial">U</div>
+        </div>
+        <div class="user-avatar-dot"></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="main-wrapper">
+
+    <!-- ========== VIEW 0: LANDING & SHOWCASE ========== -->
+    <section id="view-landing" class="view-section active">
+      <!-- Landing Navigation Header with Stylic.AI Branding -->
+      <header class="sticky top-0 left-0 right-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-xl border-b border-surface-container-high/40 shadow-[0_4px_20px_-2px_rgba(0,196,204,0.06)]">
+        <div class="h-16 sm:h-20 max-w-[1440px] mx-auto px-4 sm:px-6 md:px-margin flex items-center justify-between">
+          <a href="#" class="brand-logo" onclick="App.switchView('view-landing'); window.scrollTo({top:0, behavior:'smooth'}); return false;">
+            <img src="/static/css/stylic_icon.jpg" alt="Stylic.AI" class="brand-logo-img">
+            <div class="brand-name">
+              <span class="brand-name-main">Stylic<span class="gradient-text">.AI</span></span>
+            </div>
+          </a>
+          <nav class="hidden lg:flex items-center gap-space-lg">
+            <a class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">Product &amp; Tech</a>
+            <a class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">Clinical AI</a>
+            <a class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#wardrobe-lookbook-card">Wardrobe Synthesis</a>
+            <a class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-results-section">Clinical Results</a>
+            <a class="font-label-md text-label-md uppercase tracking-wider text-primary font-semibold hover:text-primary-container transition-colors cursor-pointer no-underline" style="text-decoration: none;" onclick="App.switchView('view-scanner'); window.scrollTo({top:0, behavior:'smooth'}); return false;" href="#">Live Scanner</a>
+            <a class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer no-underline" style="text-decoration: none;" onclick="App.switchView('view-tracker'); window.scrollTo({top:0, behavior:'smooth'}); return false;" href="#">Timeline</a>
+          </nav>
+          <div class="flex items-center gap-2 sm:gap-space-md">
+            <a class="font-label-lg text-label-lg text-secondary hover:text-secondary-container hover:bg-primary/5 px-space-sm py-space-xs rounded-lg transition-all hidden sm:inline-flex cursor-pointer no-underline" style="text-decoration: none;" onclick="App.lockApp(); return false;" href="#">Sign In</a>
+            <a class="font-label-sm sm:font-label-lg text-[13px] sm:text-label-lg bg-gradient-to-r from-primary-container to-secondary text-on-primary px-3 sm:px-space-lg py-1.5 sm:py-2.5 rounded-full shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset] hover:shadow-[0_0_16px_rgba(0,196,204,0.35)] transition-all flex items-center justify-center cursor-pointer no-underline" style="text-decoration: none;" onclick="App.switchView('view-scanner'); window.scrollTo({top:0, behavior:'smooth'}); return false;" href="#">Scan Free</a>
+            <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center cursor-pointer" onclick="App.switchView('view-profile')">
+              <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
+            </div>
+            <!-- Mobile Menu Toggle Button (visible on mobile only) -->
+            <button id="btnToggleLandingMobileNav" class="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-on-surface hover:bg-surface-container transition-all cursor-pointer border-none" onclick="App.toggleLandingMobileMenu()" aria-label="Toggle navigation menu">
+              <span id="landingMobileNavIcon" class="material-symbols-outlined text-[20px] sm:text-[22px]">menu</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Drawer Dropdown -->
+        <div id="landingMobileNavDrawer" class="lg:hidden hidden px-4 py-4 bg-surface-container-lowest/98 backdrop-blur-2xl border-b border-surface-container-high shadow-xl flex-col gap-2 transition-all">
+          <a class="py-2 px-3 rounded-xl text-on-surface font-semibold hover:bg-surface-container-low transition-colors no-underline block text-sm" style="text-decoration: none;" href="#clinical-deep-dive" onclick="App.closeLandingMobileMenu()">Product &amp; Tech</a>
+          <a class="py-2 px-3 rounded-xl text-on-surface font-semibold hover:bg-surface-container-low transition-colors no-underline block text-sm" style="text-decoration: none;" href="#clinical-deep-dive" onclick="App.closeLandingMobileMenu()">Clinical AI</a>
+          <a class="py-2 px-3 rounded-xl text-on-surface font-semibold hover:bg-surface-container-low transition-colors no-underline block text-sm" style="text-decoration: none;" href="#wardrobe-lookbook-card" onclick="App.closeLandingMobileMenu()">Wardrobe Synthesis</a>
+          <a class="py-2 px-3 rounded-xl text-on-surface font-semibold hover:bg-surface-container-low transition-colors no-underline block text-sm" style="text-decoration: none;" href="#clinical-results-section" onclick="App.closeLandingMobileMenu()">Clinical Results</a>
+          <div class="h-px bg-surface-container-high my-1"></div>
+          <a class="py-2.5 px-3 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-between no-underline text-sm" style="text-decoration: none;" onclick="App.switchView('view-scanner'); App.closeLandingMobileMenu(); return false;" href="#">
+            <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">center_focus_strong</span> Live Camera Scanner</span>
+            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </a>
+          <a class="py-2 px-3 rounded-xl text-on-surface hover:bg-surface-container-low flex items-center justify-between no-underline text-sm" style="text-decoration: none;" onclick="App.switchView('view-tracker'); App.closeLandingMobileMenu(); return false;" href="#">
+            <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">timeline</span> Progress Timeline</span>
+          </a>
+          <a class="py-2 px-3 rounded-xl text-on-surface hover:bg-surface-container-low flex items-center justify-between no-underline text-sm" style="text-decoration: none;" onclick="App.switchView('view-profile'); App.closeLandingMobileMenu(); return false;" href="#">
+            <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">account_circle</span> Client Profile</span>
+          </a>
+          <a class="py-2 px-3 rounded-xl text-secondary hover:bg-secondary/10 flex items-center justify-between no-underline text-sm" style="text-decoration: none;" onclick="App.lockApp(); App.closeLandingMobileMenu(); return false;" href="#">
+            <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">key</span> Sign In / Account</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Main Landing Body -->
+      <div class="w-full bg-surface">
+        <div class="flex flex-col w-full">
+          <!-- Top Ambient Halo Elements -->
+          <div class="relative w-full overflow-hidden">
+            <div class="absolute -top-48 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-gradient-to-b from-primary-fixed/30 via-secondary-fixed/20 to-transparent blur-3xl pointer-events-none -z-10"></div>
+            <div class="absolute top-80 right-10 w-96 h-96 bg-tertiary-container/10 blur-3xl pointer-events-none -z-10"></div>
+            
+            <!-- Hero Section -->
+            <section class="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-margin pt-space-md sm:pt-space-xl md:pt-space-2xl pb-space-xl sm:pb-space-2xl">
+              <div class="flex flex-col items-center text-center max-w-4xl mx-auto">
+                <!-- Headline -->
+                <h1 class="font-display-lg text-[28px] sm:text-4xl md:text-5xl lg:text-display-lg text-on-surface tracking-tight leading-[1.12] mb-space-md mt-space-sm">
+                  Precision Skin Intelligence <br class="hidden sm:inline"/>
+                  <span class="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Meets Algorithmic Wardrobe</span> Curation.
+                </h1>
+                
+                <!-- Subheadline -->
+                <p class="font-body-xl text-sm sm:text-base md:text-body-xl text-on-surface-variant max-w-2xl mb-space-lg sm:mb-space-xl leading-relaxed">
+                  Transform high-resolution facial biometrics into hospital-grade dermatological protocols and harmonized, undertone-matched head-to-toe style in sub-22ms.
+                </p>
+                
+                <!-- CTA Cluster -->
+                <div class="flex flex-col sm:flex-row items-center gap-3 sm:gap-space-md w-full sm:w-auto mb-space-xl">
+                  <a class="w-full sm:w-auto px-6 sm:px-space-xl py-3 sm:py-3.5 rounded-full bg-gradient-to-r from-primary-container to-secondary text-on-primary font-label-lg text-sm sm:text-label-lg shadow-md hover:shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-space-xs cursor-pointer no-underline" style="text-decoration: none;" onclick="App.switchView('view-scanner'); window.scrollTo({top:0, behavior:'smooth'}); return false;" href="#">
+                    <span class="material-symbols-outlined text-[20px]">center_focus_strong</span>
+                    <span>Scan Your Skin Free</span>
+                  </a>
+                  <a class="w-full sm:w-auto px-6 sm:px-space-lg py-3 sm:py-3.5 rounded-full bg-surface-container-lowest text-on-surface font-label-lg text-sm sm:text-label-lg shadow-sm hover:shadow-md hover:bg-surface-container-low transition-all flex items-center justify-center gap-space-xs cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">
+                    <span class="material-symbols-outlined text-secondary text-[20px]">play_circle</span>
+                    <span>Explore Clinical Dossier</span>
+                  </a>
+                </div>
+                
+                <!-- Trust Telemetry Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-y-3 sm:gap-x-8 text-on-surface-variant font-label-sm text-[11px] sm:text-label-sm uppercase tracking-wider pt-space-xs">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-primary text-[18px]">verified_user</span>
+                    <span>50,000+ Clinical Scans</span>
+                  </div>
+                  <div class="flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-primary text-[18px]">security</span>
+                    <span>ISO-27001 • HIPAA Compliant</span>
+                  </div>
+                  <div class="flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-primary text-[18px]">center_focus_strong</span>
+                    <span>99.4% AI Landmark Precision</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hero Interactive Preview Dual-Pane -->
+              <div class="mt-space-xl sm:mt-space-2xl rounded-3xl bg-surface-container-lowest shadow-xl overflow-hidden p-3 sm:p-space-sm md:p-space-lg">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md sm:gap-space-lg items-center">
+                  <!-- Left: Optical Telemetry Viewport -->
+                  <div class="lg:col-span-7 relative rounded-2xl overflow-hidden bg-surface-container-highest/40 min-h-[340px] sm:min-h-[440px] md:min-h-[460px] flex flex-col justify-between p-3 sm:p-space-md md:p-space-lg">
+                    <img id="landingHeroHumanImg" class="absolute inset-0 w-full h-full object-cover opacity-95 transition-all duration-700" alt="Clinical facial scan with biometric mesh reticle" src="/static/images/clinical_hero_face.jpg"/>
+                    <div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/80 via-transparent to-surface-container-lowest/30 pointer-events-none"></div>
+                    
+                    <!-- Reticle HUD Overlay -->
+                    <div class="relative z-10 flex justify-between items-start">
+                      <div class="bg-surface-container-lowest/80 backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-2 shadow-sm">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="font-label-sm text-label-sm uppercase font-mono text-on-surface tracking-widest">LIVE SENSOR FEED • 468 MESH</span>
+                      </div>
+                      <div class="bg-surface-container-lowest/80 backdrop-blur-md rounded-xl px-3 py-1.5 shadow-sm text-right">
+                        <span class="font-label-sm text-label-sm text-on-surface-variant font-mono block">SPECTRAL FLUX</span>
+                        <span class="font-headline-sm text-headline-sm text-primary font-bold leading-none">98.2<span class="text-xs font-normal text-on-surface-variant font-mono ml-0.5">%</span></span>
+                      </div>
+                    </div>
+                    
+                    <!-- Visual Reticle Graphics -->
+                    <div class="relative z-10 my-auto flex items-center justify-center pointer-events-none">
+                      <div class="w-48 h-48 sm:w-56 sm:h-56 rounded-full border-2 border-dashed border-primary-container/70 animate-[spin_25s_linear_infinite] flex items-center justify-center">
+                        <div class="w-36 h-36 rounded-full bg-primary/5 backdrop-blur-[1px] flex items-center justify-center relative">
+                          <span class="material-symbols-outlined text-primary/80 text-4xl">face</span>
+                          <div class="absolute -top-2 px-2 py-0.5 bg-secondary text-on-secondary rounded-full font-label-sm text-[9px] uppercase tracking-wider">Zone T4 Normal</div>
+                          <div class="absolute -bottom-2 px-2 py-0.5 bg-primary text-on-primary rounded-full font-label-sm text-[9px] uppercase tracking-wider">Erythema: Low</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Lower Telemetry Indicators -->
+                    <div class="relative z-10 grid grid-cols-3 gap-2 bg-surface-container-lowest/85 backdrop-blur-md p-space-sm rounded-xl shadow-sm">
+                      <div>
+                        <span class="font-label-sm text-[10px] text-on-surface-variant uppercase block">UV Damage Index</span>
+                        <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">0.12 <span class="text-[11px] font-mono text-emerald-600 font-normal">Optimal</span></span>
+                      </div>
+                      <div>
+                        <span class="font-label-sm text-[10px] text-on-surface-variant uppercase block">Lipid Stratum</span>
+                        <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">91% <span class="text-[11px] font-mono text-primary font-normal">Dense</span></span>
+                      </div>
+                      <div>
+                        <span class="font-label-sm text-[10px] text-on-surface-variant uppercase block">Pore Clarity</span>
+                        <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">94.8% <span class="text-[11px] font-mono text-primary font-normal">Clear</span></span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Right: Real-time Synthesis Feed -->
+                  <div class="lg:col-span-5 flex flex-col gap-space-md">
+                    <!-- Diagnosis Tile -->
+                    <div class="p-space-lg rounded-2xl bg-surface-container-low/60 shadow-sm flex flex-col gap-space-sm">
+                      <div class="flex items-center justify-between">
+                        <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Diagnostic Report</span>
+                        <span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-label-sm text-[11px] font-mono">Calibrated in 19ms</span>
+                      </div>
+                      <div class="flex items-baseline gap-2">
+                        <span class="font-headline-xl text-headline-xl text-on-surface font-bold">89.4</span>
+                        <span class="font-body-sm text-body-sm text-on-surface-variant">/ 100 Epidermal Barrier Health</span>
+                      </div>
+                      <!-- Mini Progress Bar -->
+                      <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-primary-container to-secondary rounded-full" style="width: 89.4%"></div>
+                      </div>
+                      <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                        Sub-surface vascular stability is exceptionally intact. Minor transepidermal water loss detected across left malar apex.
+                      </p>
+                    </div>
+                    
+                    <!-- Chromatic Color Analysis -->
+                    <div class="p-space-lg rounded-2xl bg-surface-container-low/60 shadow-sm flex flex-col gap-space-sm">
+                      <div class="flex items-center justify-between">
+                        <span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-semibold">Chromatic Undertone Profile</span>
+                        <span class="font-label-sm text-label-sm font-mono text-on-surface-variant">Neutral Cool • ΔE 0.42</span>
+                      </div>
+                      <!-- Color Swatch Swatches -->
+                      <div class="grid grid-cols-5 gap-2 pt-1">
+                        <div class="flex flex-col items-center gap-1">
+                          <div class="w-full h-8 rounded-lg bg-cyan-900 shadow-sm"></div>
+                          <span class="font-label-sm text-[9px] text-on-surface-variant">Deep Teal</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                          <div class="w-full h-8 rounded-lg bg-slate-100 shadow-sm"></div>
+                          <span class="font-label-sm text-[9px] text-on-surface-variant">Frost Pure</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                          <div class="w-full h-8 rounded-lg bg-indigo-900 shadow-sm"></div>
+                          <span class="font-label-sm text-[9px] text-on-surface-variant">Iris Royal</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                          <div class="w-full h-8 rounded-lg bg-stone-300 shadow-sm"></div>
+                          <span class="font-label-sm text-[9px] text-on-surface-variant">Oatmeal</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                          <div class="w-full h-8 rounded-lg bg-teal-600 shadow-sm"></div>
+                          <span class="font-label-sm text-[9px] text-on-surface-variant">Aquifer</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Wardrobe Pairing -->
+                    <div class="p-space-md rounded-2xl bg-surface-container-lowest shadow-md flex items-center gap-space-md cursor-pointer hover:shadow-lg transition-all" onclick="App.switchView('view-scanner'); window.scrollTo({top:0, behavior:'smooth'});">
+                      <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-surface-container">
+                        <img class="w-full h-full object-cover" alt="Structured double-faced wool overshirt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzQb166wHARARIhJVxWe2bvbQVxzB5S_55gc8vYSi-m5mtH5n32RviAHOsaEPgMoVgdvCEgzmQunAM_F7PNS6Fx-w9nG2iCgRa_eAdrbYORR6Yyn_boxRzwYLJfHW9Sa2sVQr8I3WGHFyTqkUJLuQ_Vtvz7IqTyaPAwGChrIqY--f4nDW3FiJB_6_fSXal7npLs9sr1RWfkZOZn3gObDYPidAe9L0B6zX3yEvFcg"/>
+                      </div>
+                      <div class="flex flex-col min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                          <span class="font-label-sm text-[10px] text-secondary uppercase font-semibold">Matched Silhouette</span>
+                          <span class="text-[11px] font-mono text-primary font-semibold">99.1% Tone Concordance</span>
+                        </div>
+                        <span class="font-headline-sm text-body-md font-bold text-on-surface truncate">Structured Double-Faced Wool Overshirt</span>
+                        <span class="font-body-sm text-[12px] text-on-surface-variant">Pantone 19-4014 TCX • Charcoal Horizon</span>
+                      </div>
+                      <span class="material-symbols-outlined text-outline-variant text-[20px]">arrow_forward</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Section 2: 3-Step Architecture Flow -->
+          <section class="w-full bg-surface-container-low py-space-2xl">
+            <div class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin">
+              <div class="flex flex-col md:flex-row md:items-end justify-between mb-space-xl gap-space-md">
+                <div>
+                  <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Biometric Triangulation</span>
+                  <h2 class="font-headline-xl text-headline-xl-mobile md:text-headline-xl text-on-surface mt-1">How Stylic.AI Synthesizes Your Identity</h2>
+                </div>
+                <p class="font-body-md text-body-md text-on-surface-variant max-w-md">
+                  A closed-loop pipeline translating photonic sub-epidermal data into personalized active dermatology and bespoke wardrobe algorithms.
+                </p>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+                <!-- Step 1 -->
+                <div class="bg-surface-container-lowest p-space-xl rounded-3xl shadow-sm flex flex-col justify-between hover:shadow-lg transition-shadow">
+                  <div>
+                    <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-space-lg">
+                      <span class="material-symbols-outlined text-[26px]">center_focus_strong</span>
+                    </div>
+                    <div class="font-label-sm text-label-sm font-mono text-outline uppercase mb-1">Phase 01 // Input</div>
+                    <h3 class="font-headline-md text-headline-md text-on-surface mb-space-sm">Biometric Optical Scan</h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant mb-space-md">
+                      High-frequency multi-spectral camera intake calibrates 468 anatomical facial vertices, identifying micro-capillary inflammation and sub-dermal melanin depth in under 22ms.
+                    </p>
+                  </div>
+                  <div class="pt-space-md bg-surface-container-low/50 -mx-space-md -mb-space-md p-space-md rounded-2xl flex items-center justify-between">
+                    <span class="font-label-sm text-[11px] font-mono text-on-surface-variant">LATENCY</span>
+                    <span class="font-label-sm text-[11px] font-mono text-primary font-bold">18.4ms average</span>
+                  </div>
+                </div>
+                
+                <!-- Step 2 -->
+                <div class="bg-surface-container-lowest p-space-xl rounded-3xl shadow-sm flex flex-col justify-between hover:shadow-lg transition-shadow">
+                  <div>
+                    <div class="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center mb-space-lg">
+                      <span class="material-symbols-outlined text-[26px]">medical_services</span>
+                    </div>
+                    <div class="font-label-sm text-label-sm font-mono text-outline uppercase mb-1">Phase 02 // Diagnostic</div>
+                    <h3 class="font-headline-md text-headline-md text-on-surface mb-space-sm">Dermal Diagnostics</h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant mb-space-md">
+                      Clinical models compute stratum corneum barrier score, lipid desquamation markers, and formulate tailored compounding regimens (Ectoin, Niacinamide, Copper Peptides).
+                    </p>
+                  </div>
+                  <div class="pt-space-md bg-surface-container-low/50 -mx-space-md -mb-space-md p-space-md rounded-2xl flex items-center justify-between">
+                    <span class="font-label-sm text-[11px] font-mono text-on-surface-variant">COMPOUND PRECISION</span>
+                    <span class="font-label-sm text-[11px] font-mono text-secondary font-bold">99.8% bio-tolerance</span>
+                  </div>
+                </div>
+                
+                <!-- Step 3 -->
+                <div class="bg-surface-container-lowest p-space-xl rounded-3xl shadow-sm flex flex-col justify-between hover:shadow-lg transition-shadow">
+                  <div>
+                    <div class="w-12 h-12 rounded-2xl bg-tertiary-container/20 text-tertiary flex items-center justify-center mb-space-lg">
+                      <span class="material-symbols-outlined text-[26px]">styler</span>
+                    </div>
+                    <div class="font-label-sm text-label-sm font-mono text-outline uppercase mb-1">Phase 03 // Harmony</div>
+                    <h3 class="font-headline-md text-headline-md text-on-surface mb-space-sm">Chromatic Synthesis</h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant mb-space-md">
+                      AI maps exact CIELAB skin tonal undertones with garment textile reflectances. Generates synchronized daily capsules spanning pure virgin wools, supima knits, and metal accents.
+                    </p>
+                  </div>
+                  <div class="pt-space-md bg-surface-container-low/50 -mx-space-md -mb-space-md p-space-md rounded-2xl flex items-center justify-between">
+                    <span class="font-label-sm text-[11px] font-mono text-on-surface-variant">CHROMATIC DELTA</span>
+                    <span class="font-label-sm text-[11px] font-mono text-tertiary font-bold">ΔE &lt; 0.5 Studio Grade</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 3: Feature Deep-Dive Grid (Clinical Precision + Editorial Fashion) -->
+          <section class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin py-space-2xl w-full" id="clinical-deep-dive">
+            <div class="text-center max-w-2xl mx-auto mb-space-2xl">
+              <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Laboratory Specifications</span>
+              <h2 class="font-headline-xl text-headline-xl-mobile md:text-headline-xl text-on-surface mt-1">Surgical Precision. Editorial Distinction.</h2>
+              <p class="font-body-md text-body-md text-on-surface-variant mt-space-xs">
+                Direct telemetry feeds and intelligent compounding designed for discerning dermatological outcomes.
+              </p>
+            </div>
+            
+            <!-- Bento Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+              <!-- Card 1: Longitudinal Barrier Tracking (Span 7) -->
+              <div class="md:col-span-7 bg-surface-container-lowest p-space-xl rounded-3xl shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">28-Day Clinical Trial Metric</span>
+                    <span class="font-label-sm text-label-sm text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full font-semibold">+21.2% Net Recovery</span>
+                  </div>
+                  <h3 class="font-headline-md text-headline-md text-on-surface mb-1">Longitudinal Barrier Restoration</h3>
+                  <p class="font-body-sm text-body-sm text-on-surface-variant max-w-lg mb-space-lg">
+                    Real-time corneometry tracking across four weeks of compounded active ceramides and lipid replenishing protocols.
+                  </p>
+                  
+                  <!-- Interactive SVG Line Sparkline / Recovery Chart -->
+                  <div class="w-full bg-surface-container-low/40 rounded-2xl p-space-md">
+                    <div class="flex items-center justify-between text-[11px] font-mono text-on-surface-variant mb-2">
+                      <span>WEEK 0 (68.2%)</span>
+                      <span>WEEK 2 (77.4%)</span>
+                      <span>WEEK 4 (89.4%)</span>
+                    </div>
+                    <div class="relative w-full h-36">
+                      <svg class="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 500 120">
+                        <defs>
+                          <linearGradient id="chartGrad" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stop-color="#00c4cc" stop-opacity="0.35"></stop>
+                            <stop offset="100%" stop-color="#00c4cc" stop-opacity="0"></stop>
+                          </linearGradient>
+                        </defs>
+                        <path d="M 0 95 Q 120 75 250 50 T 500 15 L 500 120 L 0 120 Z" fill="url(#chartGrad)"></path>
+                        <path d="M 0 95 Q 120 75 250 50 T 500 15" fill="none" stroke="#00696e" stroke-linecap="round" stroke-width="3"></path>
+                        <circle cx="0" cy="95" fill="#00696e" r="4"></circle>
+                        <circle cx="250" cy="50" fill="#00696e" r="4"></circle>
+                        <circle cx="500" cy="15" fill="#4b41e1" r="5" stroke="#ffffff" stroke-width="2"></circle>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-space-sm pt-space-lg mt-space-md">
+                  <div class="bg-surface-container-low p-space-sm rounded-xl">
+                    <span class="font-label-sm text-[10px] text-on-surface-variant uppercase block">TEWL Reduction</span>
+                    <span class="font-headline-sm text-headline-sm text-primary font-bold">-34.8%</span>
+                  </div>
+                  <div class="bg-surface-container-low p-space-sm rounded-xl">
+                    <span class="font-label-sm text-[10px] text-on-surface-variant uppercase block">Elasticity Gain</span>
+                    <span class="font-headline-sm text-headline-sm text-secondary font-bold">+18.5%</span>
+                  </div>
+                  <div class="bg-surface-container-low p-space-sm rounded-xl">
+                    <span class="font-label-sm text-[10px] text-on-surface-variant uppercase block">Erythema Clearance</span>
+                    <span class="font-headline-sm text-headline-sm text-on-surface font-bold">96.1%</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Card 2: Audio Consultation Waveform (Span 5) -->
+              <div class="md:col-span-5 bg-gradient-to-br from-surface-container-lowest to-surface-container-low p-space-xl rounded-3xl shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-semibold">AI Clinical Protocol</span>
+                    <span class="material-symbols-outlined text-secondary text-[20px]">graphic_eq</span>
+                  </div>
+                  <h3 class="font-headline-md text-headline-md text-on-surface mb-1">Clinical Audio Brief</h3>
+                  <p class="font-body-sm text-body-sm text-on-surface-variant mb-space-lg">
+                    Daily synthesized briefing calibrated to local UV telemetry, epidermal hydration, and ambient conditions.
+                  </p>
+                  
+                  <!-- Waveform UI Component with Interactive Audio Player -->
+                  <div class="p-space-md bg-surface-container-lowest rounded-2xl shadow-sm flex flex-col gap-3">
+                    <audio id="landingAudioPlayer" src="/static/clinical_brief_084.wav" preload="auto"></audio>
+                    <div class="flex items-center gap-3">
+                      <button id="landingAudioPlayBtn" onclick="App.toggleLandingAudioBrief()" class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center hover:scale-105 transition-transform flex-shrink-0 cursor-pointer" title="Listen to Clinical Brief">
+                        <span id="landingAudioIcon" class="material-symbols-outlined text-[20px]">play_arrow</span>
+                      </button>
+                      <div class="flex-1">
+                        <div class="font-label-sm text-label-sm font-semibold text-on-surface">Morning Routine Brief #084</div>
+                        <div class="text-[11px] font-mono text-on-surface-variant">Dr. Elena Vance • Synthesized Clinical Voice • 00:22</div>
+                      </div>
+                    </div>
+                    <!-- Simulated audio wave visual -->
+                    <div id="landingAudioWaveform" class="flex items-center justify-between gap-1 h-8 px-2">
+                      <div class="w-1 bg-primary rounded-full h-3"></div>
+                      <div class="w-1 bg-primary rounded-full h-6"></div>
+                      <div class="w-1 bg-primary rounded-full h-8"></div>
+                      <div class="w-1 bg-primary rounded-full h-4"></div>
+                      <div class="w-1 bg-primary rounded-full h-7"></div>
+                      <div class="w-1 bg-primary rounded-full h-2"></div>
+                      <div class="w-1 bg-secondary rounded-full h-5"></div>
+                      <div class="w-1 bg-secondary rounded-full h-8"></div>
+                      <div class="w-1 bg-secondary rounded-full h-6"></div>
+                      <div class="w-1 bg-secondary rounded-full h-3"></div>
+                      <div class="w-1 bg-secondary rounded-full h-7"></div>
+                      <div class="w-1 bg-surface-variant rounded-full h-4"></div>
+                      <div class="w-1 bg-surface-variant rounded-full h-2"></div>
+                      <div class="w-1 bg-surface-variant rounded-full h-6"></div>
+                      <div class="w-1 bg-surface-variant rounded-full h-3"></div>
+                      <div class="w-1 bg-surface-variant rounded-full h-2"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="pt-space-md mt-space-md flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-primary"></span>
+                  <span class="font-body-sm text-body-sm text-on-surface-variant">Synced with Geneva weather radar (UV 6.2, Humidity 44%)</span>
+                </div>
+              </div>
+              
+              <!-- Card 3: Capsule Wardrobe Lookbook (Span 6) -->
+              <div class="md:col-span-6 bg-surface-container-lowest p-space-xl rounded-3xl shadow-sm flex flex-col justify-between" id="wardrobe-lookbook-card">
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Couture Spec Sheet</span>
+                    <span class="px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-[11px]">Autumn Drop 04</span>
+                  </div>
+                  <h3 class="font-headline-md text-headline-md text-on-surface mb-1">Architectural Capsule Wardrobe</h3>
+                  <p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">
+                    Garment curation calibrated to skin undertone balance. Low-sheen textiles prevent unnatural color-cast reflections onto cheekbones.
+                  </p>
+                  <div class="grid grid-cols-2 gap-space-md">
+                    <div class="rounded-2xl bg-surface-container-low p-space-sm flex flex-col">
+                      <div class="h-32 rounded-xl overflow-hidden mb-2 bg-surface-container">
+                        <img class="w-full h-full object-cover" alt="Superfine Merino knitwear" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCq1ixVmMZcO-_aCU7_gZ4TdPJdOFYmVI3aY_0kwtA5Qp0FQl5VWbh4CXv4Lno2kmS1k7fQvgxdjeGV3wma5sxYg_PLKWYkzonp6VHiBCZylUJbtELaUCPwtVIHt1oZLkR23T8Ct6bLu8RGjFoleqgi0XBvcr6JZk6WFpz270ZTkgVug96O4eWP5VtoQapHCsZ_Ug7qeIKhs9XypPfYdaMX1Rri-4fyKS8BL3__4Q"/>
+                      </div>
+                      <span class="font-label-sm text-[11px] font-semibold text-on-surface">100% Superfine Merino</span>
+                      <span class="font-body-sm text-[11px] text-on-surface-variant">Cool Frost Gray • 17.5 Micron</span>
+                    </div>
+                    <div class="rounded-2xl bg-surface-container-low p-space-sm flex flex-col">
+                      <div class="h-32 rounded-xl overflow-hidden mb-2 bg-surface-container">
+                        <img class="w-full h-full object-cover" alt="Structured Wool Twill trousers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAd2rrOaizofwkFBHs5xmVgF6swBi6W-7K3ZG6N9BjxdnyZf7jwSlPRRXNC8FHq81wr7FQnAgJsb2j_q69gFlqzu2EnM6ewam3D58b7FbeXjiUNL3ti5H61sGlkejg8IYkM2ueLG9djdQ_3j-z_-066xpLtprplBQpvjZkyQ8s52BvUIbnLdai0a44rjAwuBhJPM9RuVfNB_cfIy4exnjSLsM-UCJjcDscE0379Pg"/>
+                      </div>
+                      <span class="font-label-sm text-[11px] font-semibold text-on-surface">Structured Wool Twill</span>
+                      <span class="font-body-sm text-[11px] text-on-surface-variant">Deep Eclipse Indigo • High Drape</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="pt-space-md flex items-center justify-between text-[11px] font-mono text-outline">
+                  <span>CHROMATIC MATCH: 99.4%</span>
+                  <span>SILHOUETTE: RELAXED TAILORING</span>
+                </div>
+              </div>
+              
+              <!-- Card 4: Prescription Formulation Protocol (Span 6) -->
+              <div class="md:col-span-6 bg-surface-container-lowest p-space-xl rounded-3xl shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-semibold">Active Compounding</span>
+                    <span class="material-symbols-outlined text-secondary text-[20px]">science</span>
+                  </div>
+                  <h3 class="font-headline-md text-headline-md text-on-surface mb-1">Prescription Formulation Matrix</h3>
+                  <p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">
+                    Custom micro-encapsulated formula updated dynamically in response to biometric re-scans.
+                  </p>
+                  <div class="space-y-2.5">
+                    <div class="p-3 bg-surface-container-low rounded-xl flex items-center justify-between">
+                      <div>
+                        <span class="font-label-sm text-label-sm font-bold text-on-surface block">Niacinamide USP (Liposomal)</span>
+                        <span class="text-[12px] text-on-surface-variant">Sebum normalization &amp; stratum corneum reinforcement</span>
+                      </div>
+                      <span class="font-mono text-headline-sm text-primary font-bold">4.5%</span>
+                    </div>
+                    <div class="p-3 bg-surface-container-low rounded-xl flex items-center justify-between">
+                      <div>
+                        <span class="font-label-sm text-label-sm font-bold text-on-surface block">Biomimetic Ceramide Complex</span>
+                        <span class="text-[12px] text-on-surface-variant">NP, AP, EOP in optimal physiological ratio</span>
+                      </div>
+                      <span class="font-mono text-headline-sm text-secondary font-bold">2.0%</span>
+                    </div>
+                    <div class="p-3 bg-surface-container-low rounded-xl flex items-center justify-between">
+                      <div>
+                        <span class="font-label-sm text-label-sm font-bold text-on-surface block">Ectoin Stress Protection Factor</span>
+                        <span class="text-[12px] text-on-surface-variant">Hydration preservation under intense particulate exposure</span>
+                      </div>
+                      <span class="font-mono text-headline-sm text-tertiary font-bold">1.2%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="pt-space-md flex items-center justify-between text-[11px] font-mono text-outline">
+                  <span>PH: 5.35 BALANCED</span>
+                  <span>DISPENSE: AIRLESS VIAL 50ML</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 4: Real-World Clinical Evidence & Dermatologist Endorsement -->
+          <section class="w-full bg-surface-container-lowest py-space-2xl" id="clinical-results-section">
+            <div class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin">
+              <!-- Metrics Strip -->
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-gutter mb-space-2xl pb-space-xl bg-surface-container-low/40 rounded-3xl p-space-lg md:p-space-xl">
+                <div class="flex flex-col">
+                  <span class="font-display-lg text-display-lg-mobile md:text-display-lg text-primary font-bold tracking-tight leading-none">+21%</span>
+                  <span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface font-semibold mt-2">Barrier Recovery</span>
+                  <span class="font-body-sm text-[12px] text-on-surface-variant">Verified over 28-day corneometer trials</span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="font-display-lg text-display-lg-mobile md:text-display-lg text-secondary font-bold tracking-tight leading-none">98.4%</span>
+                  <span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface font-semibold mt-2">Undertone Precision</span>
+                  <span class="font-body-sm text-[12px] text-on-surface-variant">CIELAB spectroscopic delta concordance</span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="font-display-lg text-display-lg-mobile md:text-display-lg text-tertiary font-bold tracking-tight leading-none">&lt;22ms</span>
+                  <span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface font-semibold mt-2">Biometric Latency</span>
+                  <span class="font-body-sm text-[12px] text-on-surface-variant">Edge neural tensor processing</span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface font-bold tracking-tight leading-none">4.96</span>
+                  <span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface font-semibold mt-2">Clinical Rating</span>
+                  <span class="font-body-sm text-[12px] text-on-surface-variant">Across 140+ board-certified dermatologists</span>
+                </div>
+              </div>
+              
+              <!-- Testimonial Editorial Split -->
+              <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-center">
+                <div class="lg:col-span-5 relative">
+                  <div class="w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg bg-surface-container">
+                    <img class="w-full h-full object-cover" alt="Portrait of Dr. Elena Vance" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfHex0keG69UaCvSo1HW3HRzD_6wO8_wFzZOVF2SmytLr3VbM2sCxdns_rwcmFZnqcaPYmwRmrqOi0ol0VrYm9CdWawzOh3dvdY3ZTKR2zUbTSdXiaKp4N8lnHPAZBT9EQq6-GbjcX2t53M_WcI5frDzN92bs6TJJVqE246WRb5k-1srNM5F_ha427BhIzrWZ23sAUWGK5BwXt-hS1MrW5niJI7epGzDTgQM644Q"/>
+                  </div>
+                  <div class="absolute -bottom-4 right-2 sm:-right-4 bg-surface-container-lowest p-space-sm sm:p-space-md rounded-2xl shadow-xl max-w-[240px] sm:max-w-xs">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+                      <span class="font-label-sm text-[11px] uppercase font-bold text-on-surface">Double-Blind Validated</span>
+                    </div>
+                    <p class="font-body-sm text-[12px] text-on-surface-variant">Published in the Journal of Photodermatology &amp; Computational Aesthetics, 2024.</p>
+                  </div>
+                </div>
+                <div class="lg:col-span-7 flex flex-col gap-space-md">
+                  <div class="flex items-center gap-2 text-primary">
+                    <span class="material-symbols-outlined text-[24px]">format_quote</span>
+                    <span class="font-label-sm text-label-sm uppercase tracking-widest font-semibold">Peer Review Endorsement</span>
+                  </div>
+                  <blockquote class="font-headline-md text-headline-md text-on-surface leading-snug font-normal">
+                    “Stylic.AI has eliminated the guesswork of cosmetic consultations. By fusing spectroscopic optical capture with bio-adaptive active compounding, our patients achieve clinical barrier integrity in half the standard recovery window — with the added psychological lift of an expertly curated personal aesthetic.”
+                  </blockquote>
+                  <div>
+                    <div class="font-headline-sm text-headline-sm text-on-surface font-bold">Dr. Elena Vance, MD, FAAD</div>
+                    <div class="font-body-sm text-body-sm text-on-surface-variant">Director of Clinical Photomedicine, Zurich Bio-Dermatology Institute</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 5: High-Impact Conversion Banner -->
+          <section class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin py-space-2xl w-full">
+            <div class="relative rounded-3xl bg-gradient-to-r from-primary to-secondary text-on-primary p-space-xl md:p-space-2xl overflow-hidden shadow-2xl">
+              <!-- Background Ambient Wave Effect -->
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,247,255,0.25),transparent_60%)] pointer-events-none"></div>
+              <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-center">
+                <div class="lg:col-span-8 flex flex-col gap-space-sm">
+                  <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary-fixed font-semibold">Zero Hardware Required • Instant WebGL Scanner</span>
+                  <h2 class="font-headline-xl text-headline-xl-mobile md:text-headline-xl text-on-primary font-bold">
+                    Unlock Your Personal Clinical Glow &amp; Wardrobe Blueprint.
+                  </h2>
+                  <p class="font-body-xl text-body-md md:text-body-xl text-on-primary/90 max-w-xl">
+                    Run your facial biometric diagnostic in under 60 seconds. Receive your custom derm formulation and curated style palette today.
+                  </p>
+                </div>
+                <div class="lg:col-span-4 flex flex-col gap-space-sm">
+                  <div class="bg-surface-container-lowest/95 backdrop-blur-md p-space-md rounded-2xl shadow-xl flex flex-col gap-space-sm">
+                    <div class="flex items-center gap-2 text-on-surface">
+                      <span class="material-symbols-outlined text-primary text-[20px]">videocam</span>
+                      <span class="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Quick Optical Intake</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="font-label-sm text-[11px] text-on-surface-variant uppercase font-semibold">Enter your work or personal email</label>
+                      <input id="landingQuickEmail" class="w-full px-3.5 py-2.5 rounded-xl bg-surface text-on-surface font-body-sm text-body-sm shadow-sm outline-none focus:bg-surface-container-lowest transition-all" placeholder="name@domain.com" type="email"/>
+                    </div>
+                    <button id="landingQuickScanBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-primary-container to-secondary text-on-primary font-label-lg text-label-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer">
+                      <span>Begin Camera Scan</span>
+                      <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </button>
+                    <span class="font-label-sm text-[10px] text-on-surface-variant text-center">
+                      Encrypted end-to-end. Raw video never leaves browser memory.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Landing Page Footer -->
+          <footer class="w-full bg-surface-container-low mt-space-2xl">
+            <div class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin py-space-xl">
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+                <div class="md:col-span-5 flex flex-col gap-space-sm">
+                  <a href="#" class="brand-logo" onclick="App.switchView('view-landing'); window.scrollTo({top:0, behavior:'smooth'}); return false;">
+                    <img src="/static/css/stylic_icon.jpg" alt="Stylic.AI" class="brand-logo-img">
+                    <div class="brand-name">
+                      <span class="brand-name-main">Stylic<span class="gradient-text">.AI</span></span>
+                    </div>
+                  </a>
+                  <p class="font-body-sm text-body-sm text-on-surface-variant max-w-sm">
+                    High-precision dermatological intelligence meets couture styling synthesis. Algorithmic skin barrier diagnostics calibrated with real-time biometric and wardrobe telemetry.
+                  </p>
+                  <div class="flex items-center gap-space-xs pt-space-xs">
+                    <span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+                    <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">ISO 27001 Certified • HIPAA Compliant Diagnostic Architecture</span>
+                  </div>
+                </div>
+                <div class="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-gutter">
+                  <div class="flex flex-col gap-space-sm">
+                    <h4 class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface font-semibold">Platform</h4>
+                    <ul class="flex flex-col gap-space-xs font-body-sm text-body-sm text-on-surface-variant">
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">Product &amp; Tech</a></li>
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">Clinical Diagnostics</a></li>
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#wardrobe-lookbook-card">Wardrobe Synthesis</a></li>
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-results-section">Clinical Validation</a></li>
+                    </ul>
+                  </div>
+                  <div class="flex flex-col gap-space-sm">
+                    <h4 class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface font-semibold">Compliance &amp; Data</h4>
+                    <ul class="flex flex-col gap-space-xs font-body-sm text-body-sm text-on-surface-variant">
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-results-section">HIPAA Framework</a></li>
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">Telemetry Security</a></li>
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">Biometric Privacy</a></li>
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-results-section">Clinical Terms</a></li>
+                    </ul>
+                  </div>
+                  <div class="flex flex-col gap-space-sm col-span-2 sm:col-span-1">
+                    <h4 class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface font-semibold">Access</h4>
+                    <ul class="flex flex-col gap-space-xs font-body-sm text-body-sm text-on-surface-variant">
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" onclick="App.switchView('view-scanner'); window.scrollTo({top:0, behavior:'smooth'}); return false;" href="#">Live Scanner</a></li>
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" onclick="App.lockApp(); return false;" href="#">Client Portal</a></li>
+                      <li><a class="hover:text-primary transition-colors cursor-pointer no-underline" style="text-decoration: none;" onclick="App.switchView('view-scanner'); window.scrollTo({top:0, behavior:'smooth'}); return false;" href="#">Request Diagnostics</a></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-space-xl pt-space-lg flex flex-col md:flex-row items-center justify-between gap-space-sm">
+                <span class="font-label-sm text-label-sm text-on-surface-variant">© 2025 Stylic.AI Inc. All telemetry and diagnostic syntheses encrypted. All rights reserved.</span>
+                <div class="flex items-center gap-space-md font-label-sm text-label-sm text-on-surface-variant">
+                  <a class="hover:text-on-surface transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">Privacy Policy</a>
+                  <a class="hover:text-on-surface transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-deep-dive">Terms of Service</a>
+                  <a class="hover:text-on-surface transition-colors cursor-pointer no-underline" style="text-decoration: none;" href="#clinical-results-section">Clinical Ethics</a>
+                </div>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== VIEW 1: FACE SCANNER ========== -->
+    <section id="view-scanner" class="view-section">
+      <!-- Page Header -->
+      <header style="margin-bottom: 1.5rem;">
+        <h1 class="page-title">
+          AI Face Scanner &amp; <span class="gradient-text">Head-to-Toe</span> Stylist
+        </h1>
+        <p class="page-subtitle">
+          Position your face in front of the camera or upload a portrait. Stylic.AI generates a clinical diagnosis &amp; full-body fashion curation.
+        </p>
+        <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 0.65rem; padding: 0.4rem 0.95rem; border-radius: 9999px; background: rgba(0, 196, 204, 0.08); border: 1px solid rgba(0, 196, 204, 0.3); font-size: 0.78rem; color: var(--on-surface);">
+          <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">person_check</span>
+          <span><strong>Human Facial Scanner:</strong> Calibrated exclusively for living human beings. Non-human subjects (animals, objects) are automatically detected and rejected.</span>
+        </div>
+      </header>
+
+      <!-- Scanner Layout: Camera + Controls -->
+      <div class="scanner-layout">
+
+        <!-- LEFT: Camera Viewport Card -->
+        <div class="camera-card">
+          <!-- Viewport -->
+          <div class="viewport-container" id="viewportContainer">
+            <!-- Video feed -->
+            <video id="webcam" autoplay playsinline muted></video>
+            <!-- Uploaded image preview -->
+            <img id="uploadedImgPreview" class="uploaded-image-preview" style="display: none;" alt="Uploaded">
+            <!-- Mesh canvas overlay -->
+            <canvas id="meshCanvas"></canvas>
+            <!-- Radar scan line -->
+            <div class="scan-radar-line" id="radarLine"></div>
+
+            <!-- HUD Top -->
+            <div class="scanner-status-hud">
+              <div class="scanner-status-pill">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText" style="color: var(--on-surface);">Initializing Camera…</span>
+              </div>
+              <button class="scanner-status-pill" style="cursor: pointer;" onclick="App.toggleMesh()" title="Toggle mesh overlay">
+                <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">center_focus_strong</span>
+              </button>
+            </div>
+
+            <!-- Face alert banner -->
+            <div class="scanner-face-alert hidden" id="faceAlert">
+              <div class="pulse-warning-dot"></div>
+              <span id="faceAlertText">No human face detected — center your face</span>
+            </div>
+
+            <!-- Upload banner (shown when photo uploaded) -->
+            <div class="upload-photo-banner" id="uploadedBanner" style="display: none;">
+              <div id="uploadPhotoStatusText" style="display: flex; align-items: center; gap: 0.4rem; font-family: var(--font-label); font-size: 0.78rem; font-weight: 700; color: var(--on-surface);">
+                <span class="material-symbols-outlined" style="font-size:16px; color: var(--primary); vertical-align: middle;">image</span>
+                <span>Photo Ready for Analysis</span>
+              </div>
+              <button onclick="App.clearUploadedImage()" style="background: none; border: none; cursor: pointer; color: var(--outline); font-family: var(--font-label); font-size: 0.72rem; font-weight: 600;">✕ Clear</button>
+            </div>
+          </div>
+
+          <!-- Camera Action Buttons (CTA directly below scanner viewport) -->
+          <div class="camera-actions" id="scannerCameraActions">
+            <button class="btn btn-primary" id="btnAnalyze" onclick="App.startAnalysis()">
+              <span class="material-symbols-outlined" style="font-size: 18px;">flare</span>
+              <span id="btnTriggerScanLabel">Analyze My Skin (Live)</span>
+            </button>
+            <button class="btn btn-secondary" id="btnUploadPhotoTrigger" onclick="App.triggerUpload()" title="Upload a human facial portrait">
+              <span class="material-symbols-outlined" style="font-size: 18px;">folder_open</span>
+              <span>Upload Human Portrait</span>
+            </button>
+            <input type="file" id="photoUploadInput" accept="image/*" style="display: none;">
+          </div>
+
+          <!-- Pre-Scan Quick Indicators Pill Bar -->
+          <div style="display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; padding: 0.55rem 0.85rem; background: var(--surface-container-low); border-radius: var(--radius-md); border: 1px solid var(--outline-variant); font-size: 0.74rem; color: var(--on-surface-variant);">
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <span class="material-symbols-outlined" style="font-size: 15px; color: var(--primary);">lightbulb</span>
+              <span>1. Even Light</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <span class="material-symbols-outlined" style="font-size: 15px; color: var(--primary);">face_retouching_natural</span>
+              <span>2. Clean Skin</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <span class="material-symbols-outlined" style="font-size: 15px; color: var(--primary);">visibility</span>
+              <span>3. Eye Level</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <span class="material-symbols-outlined" style="font-size: 15px; color: var(--primary);">sentiment_neutral</span>
+              <span>4. Neutral Face</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Personalization Controls & Pre-Scan Steps -->
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+
+          <!-- Pre-Scan Preparation Steps Card -->
+          <div class="control-card pre-scan-steps-card" style="border-left: 3px solid var(--primary); background: linear-gradient(135deg, var(--surface-container-lowest), var(--surface-container-low));">
+            <div class="control-card-header" style="margin-bottom: 0.85rem;">
+              <div class="control-card-icon" style="background: rgba(0, 196, 204, 0.12); color: var(--primary);">
+                <span class="material-symbols-outlined" style="font-size: 20px;">checklist</span>
+              </div>
+              <div>
+                <h2 style="font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; margin: 0; letter-spacing: -0.015em;">Pre-Scan Preparation Steps</h2>
+                <p style="font-size: 0.74rem; color: var(--on-surface-variant); margin: 0;">Follow these 4 clinical guidelines before scanning</p>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+              <!-- Step 1 -->
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.65rem 0.85rem; background: var(--surface-container-lowest); border-radius: var(--radius-md); border: 1px solid var(--outline-variant);">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #000; font-weight: 800; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">1</div>
+                <div>
+                  <div style="font-family: var(--font-label); font-size: 0.8rem; font-weight: 700; color: var(--on-surface);">Balanced &amp; Natural Lighting</div>
+                  <div style="font-size: 0.73rem; color: var(--on-surface-variant); line-height: 1.4; margin-top: 1px;">Face natural window daylight or a well-lit room. Avoid harsh backlighting, strong colored LED lights, or deep side shadows.</div>
+                </div>
+              </div>
+
+              <!-- Step 2 -->
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.65rem 0.85rem; background: var(--surface-container-lowest); border-radius: var(--radius-md); border: 1px solid var(--outline-variant);">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #000; font-weight: 800; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">2</div>
+                <div>
+                  <div style="font-family: var(--font-label); font-size: 0.8rem; font-weight: 700; color: var(--on-surface);">Clean &amp; Bare Skin (No Heavy Makeup)</div>
+                  <div style="font-size: 0.73rem; color: var(--on-surface-variant); line-height: 1.4; margin-top: 1px;">Scan bare skin for accurate pore, barrier, and sebum telemetry. Remove eyeglasses, sunglasses, masks, or hats that occlude landmarks.</div>
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.65rem 0.85rem; background: var(--surface-container-lowest); border-radius: var(--radius-md); border: 1px solid var(--outline-variant);">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #000; font-weight: 800; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">3</div>
+                <div>
+                  <div style="font-family: var(--font-label); font-size: 0.8rem; font-weight: 700; color: var(--on-surface);">Eye-Level &amp; Neutral Expression</div>
+                  <div style="font-size: 0.73rem; color: var(--on-surface-variant); line-height: 1.4; margin-top: 1px;">Hold camera directly at eye level (30–45 cm away). Keep a relaxed, neutral facial expression looking straight ahead with mouth closed.</div>
+                </div>
+              </div>
+
+              <!-- Step 4 -->
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.65rem 0.85rem; background: var(--surface-container-lowest); border-radius: var(--radius-md); border: 1px solid var(--outline-variant);">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #000; font-weight: 800; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">4</div>
+                <div>
+                  <div style="font-family: var(--font-label); font-size: 0.8rem; font-weight: 700; color: var(--on-surface);">Human Face Alignment &amp; Scan</div>
+                  <div style="font-size: 0.73rem; color: var(--on-surface-variant); line-height: 1.4; margin-top: 1px;">Center face inside the viewport until the green 468-point mesh locks on, then tap <strong>Analyze My Skin</strong> (or upload a human photo).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Personalize Your Scan Card -->
+          <div class="control-card">
+            <div class="control-card-header">
+              <div class="control-card-icon">
+                <span class="material-symbols-outlined" style="font-size: 18px;">tune</span>
+              </div>
+              <div>
+                <h2 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; margin: 0; letter-spacing: -0.015em;">Personalize Your Scan</h2>
+                <p style="font-size: 0.75rem; color: var(--on-surface-variant); margin: 0;">Clinical context &amp; style preferences</p>
+              </div>
+            </div>
+
+            <!-- Concerns Input -->
+            <div class="form-group">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+                <label class="form-label" for="scanContext" style="margin-bottom: 0;">Concerns &amp; Style Request</label>
+                <button class="voice-input-btn" id="voiceBtn">
+                  <span class="material-symbols-outlined" style="font-size: 13px;">mic</span>
+                  <span id="voiceBtnText">Voice</span>
+                </button>
+              </div>
+              <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; transition: all 0.2s ease;" onfocuswithin="this.style.borderColor='var(--primary)'">
+                <textarea id="scanContext" class="form-input" style="background: transparent; border: none; padding: 0; resize: none; box-shadow: none; min-height: 70px;" placeholder="e.g. I have oily T-zone and dark spots, want a smart casual outfit for a formal event..."></textarea>
+              </div>
+            </div>
+
+            <!-- Budget Range -->
+            <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: 1rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <span class="material-symbols-outlined" style="font-size: 18px; color: var(--secondary);">shopping_bag</span>
+                  <span style="font-family: var(--font-label); font-size: 0.78rem; font-weight: 600; color: var(--on-surface);">Outfit Budget</span>
+                </div>
+                <span class="budget-val" id="budgetLabel">₹2,000 — ₹5,000</span>
+              </div>
+              <input type="range" id="budgetRange" class="range-slider" min="500" max="20000" step="500" value="3500">
+              <div style="display: flex; justify-content: space-between; margin-top: 0.3rem;">
+                <span style="font-family: var(--font-label); font-size: 0.65rem; color: var(--outline);">₹500</span>
+                <span style="font-family: var(--font-label); font-size: 0.65rem; color: var(--outline);">₹20,000+</span>
+              </div>
+            </div>
+
+            <!-- Smart Matching Callout -->
+            <div style="display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.8rem; background: rgba(0,196,204,0.07); border: 1px solid rgba(0,196,204,0.3); border-radius: var(--radius-md); margin-top: 0.85rem;">
+              <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary); flex-shrink: 0; margin-top: 2px;">lightbulb</span>
+              <div>
+                <span style="font-family: var(--font-label); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); display: block;">Smart AI Matching</span>
+                <p style="font-family: var(--font-body); font-size: 0.78rem; color: var(--on-surface-variant); margin: 0.2rem 0 0; line-height: 1.5;">Skincare matched on dermatological efficacy. Outfits curated head-to-toe for your chromatic profile.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Scans Tray -->
+          <div class="control-card" id="recentScansTray">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+              <span style="font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; color: var(--on-surface);">Recent Analyses</span>
+              <button class="btn btn-xs btn-secondary" onclick="App.switchView('view-tracker')">View All</button>
+            </div>
+            <div id="recentScansList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <p style="font-family: var(--font-body); font-size: 0.8rem; color: var(--on-surface-variant); text-align: center; padding: 1rem 0;">No analyses yet. Capture your first scan!</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== VIEW 2: AI DIAGNOSTIC REPORT ========== -->
+    <section id="view-report" class="view-section">
+      <!-- Page Header -->
+      <div style="margin-bottom: 1.25rem;">
+        <h1 class="page-title">AI Facial Diagnostic &amp; <span class="gradient-text">Style Report</span></h1>
+        <p class="page-subtitle">Clinical dermatological findings, targeted skincare regimen, and full head-to-toe outfit curation.</p>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="report-action-bar" style="margin-bottom: 1rem;" id="reportActionBar">
+        <button class="btn btn-secondary btn-sm" onclick="App.switchView('view-scanner')" style="gap: 0.4rem;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">sync</span>
+          New Scan
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="App.shareReport()" style="gap: 0.4rem;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">share</span>
+          Share
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="App.downloadReport()" style="gap: 0.4rem;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+          Download
+        </button>
+      </div>
+
+      <!-- Report Content Container -->
+      <div id="reportContent">
+
+        <!-- Real-Time Pipeline Loading Animation (Shown during model analysis) -->
+        <div id="reportLoadingState" class="report-loading-container" style="display: none;">
+          <div class="loading-scanner-card">
+            <div class="loading-photo-ring">
+              <img id="loadingCapturedPhoto" class="loading-face-img" src="" alt="Captured Portrait">
+              <div class="loading-hud-radar"></div>
+              <div class="hud-bracket hud-tl"></div>
+              <div class="hud-bracket hud-tr"></div>
+              <div class="hud-bracket hud-bl"></div>
+              <div class="hud-bracket hud-br"></div>
+            </div>
+            <div class="loading-text-wrap">
+              <div class="loading-pulsing-badge">
+                <span class="pulsing-teal-dot"></span>
+                <span>Multi-Model AI Active</span>
+              </div>
+              <h2 id="pipelineStatusTitle" class="loading-title">AI Models Analyzing Facial Portrait...</h2>
+              <p id="pipelineStatusSubtitle" class="loading-subtitle">Synthesizing 3D facial topology, clinical lesion detection, and dermatological analysis...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unified Clinical & Fashion Report Content Wrapper -->
+        <div id="reportContentWrapper" class="report-content-wrapper" style="display: none;">
+
+          <!-- 1. Clinical Diagnosis Header Card -->
+          <div class="report-card">
+            <div class="report-header-layout">
+              <!-- Scanned Photo + Lesion Bounding Box Canvas Overlay -->
+              <div class="portrait-container">
+                <div class="portrait-wrapper">
+                  <img id="capturedPhotoPreview" class="portrait-img" src="" alt="Scanned Portrait">
+                  <canvas id="roboflowOverlayCanvas" class="portrait-canvas"></canvas>
+                </div>
+              </div>
+
+              <!-- Diagnostic Badges & Summary -->
+              <div class="report-header-info">
+                <div class="biometric-badges-row">
+                  <span class="badge badge-primary" id="badgeSkinType"><span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">biotech</span> Combination</span>
+                  <span class="badge badge-secondary" id="badgeUndertone"><span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">palette</span> Neutral Warm</span>
+                  <span class="badge badge-info" id="badgeFaceShape"><span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">face</span> Oval</span>
+                  <span class="badge badge-secondary" id="badgeAgeEstimate"><span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">schedule</span> Age ~25</span>
+                  <span class="badge badge-cyan" id="badgeRoboflow" style="display: inline-block;"><span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">biotech</span> Lesion Analysis</span>
+                </div>
+
+                <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0.5rem 0 0.35rem 0; letter-spacing: -0.015em;">Clinical Diagnostic Summary</h2>
+                <p id="diagSummary" style="font-size: 0.88rem; color: var(--on-surface-variant); line-height: 1.6; margin-bottom: 1rem;">
+                  Comprehensive clinical analysis synthesized from 3D biometric geometry, lesion detection, and dermatological intelligence.
+                </p>
+
+                <!-- Clinical Text-to-Speech Narrator -->
+                <div class="narrator-control-bar">
+                  <button id="btnVoiceReport" class="btn btn-secondary btn-sm" onclick="App.toggleReportSpeech()">
+                    <span id="voicePlayIcon"><span class="material-symbols-outlined" style="font-size: 15px; vertical-align: middle;">volume_up</span></span>
+                    <span id="voicePlayText">Listen to Diagnosis</span>
+                  </button>
+                  <button id="btnStopReportVoice" class="btn btn-danger btn-sm" style="display: none;" onclick="App.stopReportSpeech()">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">stop</span> Stop
+                  </button>
+                  <div id="voiceEqualizer" class="voice-equalizer" style="display: none;">
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Dermatological Findings & Localized Precautions -->
+          <div class="report-card">
+            <div class="report-card-heading">
+              <div class="report-card-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                <span class="material-symbols-outlined">dermatology</span>
+              </div>
+              <div>
+                <h3 style="font-size: 1.1rem; margin: 0; letter-spacing: -0.015em;">Dermatological Conditions &amp; Specific Precautions</h3>
+                <p style="font-size: 0.75rem; color: var(--on-surface-variant); margin: 0;">Identified skin issues, facial zones, severity, and personalized care</p>
+              </div>
+            </div>
+
+            <!-- Issues Grid -->
+            <div id="shortIssuesGrid" class="issues-grid"></div>
+
+            <!-- Global Barrier Protocol -->
+            <div class="barrier-protocol-card">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">shield</span>
+                <span style="font-family: var(--font-label); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--on-surface);">Daily Clinical Barrier Care Protocol</span>
+              </div>
+              <ul id="globalPrecautionsList" class="barrier-precautions-list"></ul>
+            </div>
+          </div>
+
+          <!-- 3. Targeted Skincare Regimen (Matched on Dermatological Efficacy) -->
+          <div class="report-card">
+            <div class="report-card-heading" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <div class="report-card-icon" style="background: rgba(0, 196, 204, 0.1); color: var(--primary);">
+                  <span class="material-symbols-outlined">medication</span>
+                </div>
+                <div>
+                  <h3 style="font-size: 1.1rem; margin: 0; letter-spacing: -0.015em;">Targeted Skincare Formulations</h3>
+                  <p style="font-size: 0.75rem; color: var(--on-surface-variant); margin: 0;">Formulations selected for active repair &amp; epidermal barrier health</p>
+                </div>
+              </div>
+              <div class="cost-pill">
+                <span style="font-size: 0.68rem; color: var(--on-surface-variant);">Regimen Total</span>
+                <span id="skincareRegimenCost" style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; color: var(--primary);">₹0</span>
+              </div>
+            </div>
+
+            <!-- AM & PM Routine Columns -->
+            <div class="routine-columns">
+              <div class="routine-card">
+                <div class="routine-header">
+                  <span class="material-symbols-outlined" style="color: #f59e0b; font-size: 18px;">wb_sunny</span>
+                  <span>AM Morning Routine</span>
+                </div>
+                <div id="amRoutineSteps" class="routine-steps-list"></div>
+              </div>
+              <div class="routine-card">
+                <div class="routine-header">
+                  <span class="material-symbols-outlined" style="color: var(--secondary); font-size: 18px;">bedtime</span>
+                  <span>PM Evening Routine</span>
+                </div>
+                <div id="pmRoutineSteps" class="routine-steps-list"></div>
+              </div>
+            </div>
+
+            <!-- Products Grid -->
+            <div id="reportSkincareGrid" class="products-grid"></div>
+          </div>
+
+          <!-- 4. Chromatic Skin & Wardrobe Color Palette (AI Skin Undertone Analysis) -->
+          <div class="report-card" id="chromaticPaletteCard">
+            <div class="report-card-heading" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <div class="report-card-icon" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.15)); color: #f59e0b;">
+                  <span class="material-symbols-outlined">palette</span>
+                </div>
+                <div>
+                  <h3 style="font-size: 1.1rem; margin: 0; letter-spacing: -0.015em;">Chromatic Skin &amp; Wardrobe Color Palette</h3>
+                  <p style="font-size: 0.75rem; color: var(--on-surface-variant); margin: 0;">AI skin melanin &amp; undertone analysis determining your most flattering clothing colors</p>
+                </div>
+              </div>
+              <div class="biometric-badges-row" style="margin: 0;">
+                <span class="badge badge-primary" id="colorSeasonBadge"><span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">auto_awesome</span> Warm Autumn</span>
+                <span class="badge badge-secondary" id="colorUndertoneBadge"><span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">palette</span> Warm Golden</span>
+                <span class="badge badge-info" id="colorContrastBadge"><span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">contrast</span> Medium Contrast</span>
+              </div>
+            </div>
+
+            <!-- Best Flattering Colors Grid -->
+            <div style="margin-top: 1rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <span class="material-symbols-outlined" style="font-size: 17px; color: #10b981;">check_circle</span>
+                  <span style="font-family: var(--font-label); font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface);">Best Harmonizing Colors for Your Skin</span>
+                </div>
+                <span style="font-size: 0.72rem; color: var(--on-surface-variant);">Click any HEX to copy</span>
+              </div>
+              <div id="bestColorsGrid" class="chromatic-swatches-grid"></div>
+            </div>
+
+            <!-- Colors to Avoid -->
+            <div style="margin-top: 1.25rem;">
+              <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.6rem;">
+                <span class="material-symbols-outlined" style="font-size: 17px; color: #ef4444;">cancel</span>
+                <span style="font-family: var(--font-label); font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface);">Colors to Avoid (Unflattering / Sallow Reflection)</span>
+              </div>
+              <div id="avoidColorsGrid" class="avoid-colors-grid"></div>
+            </div>
+
+            <!-- Clinical Rationale & Wardrobe Guidance -->
+            <div class="chromatic-guidance-container" style="margin-top: 1.25rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+              <div class="chromatic-info-box">
+                <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
+                  <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">psychology</span>
+                  <span style="font-family: var(--font-label); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--on-surface);">Why These Colors Match Your Skin</span>
+                </div>
+                <p id="colorStyleRationale" style="font-size: 0.82rem; color: var(--on-surface-variant); line-height: 1.55; margin: 0;"></p>
+              </div>
+
+              <div class="chromatic-info-box">
+                <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
+                  <span class="material-symbols-outlined" style="font-size: 16px; color: var(--secondary);">checkroom</span>
+                  <span style="font-family: var(--font-label); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--on-surface);">Neckline &amp; Wardrobe Guidance</span>
+                </div>
+                <p id="colorWardrobeGuidance" style="font-size: 0.82rem; color: var(--on-surface-variant); line-height: 1.55; margin: 0;"></p>
+                <div id="colorJewelryGuidance" style="margin-top: 0.5rem; font-size: 0.78rem; color: var(--primary); font-weight: 500;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Head-to-Toe Fashion Curation (Hat to Shoes) -->
+          <div class="report-card">
+            <div class="report-card-heading" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <div class="report-card-icon" style="background: rgba(75, 65, 225, 0.1); color: var(--secondary);">
+                  <span class="material-symbols-outlined">styler</span>
+                </div>
+                <div>
+                  <h3 style="font-size: 1.1rem; margin: 0; letter-spacing: -0.015em;">Head-to-Toe Style Curation</h3>
+                  <p style="font-size: 0.75rem; color: var(--on-surface-variant); margin: 0;">Full-body ensemble matched to your chromatic undertone &amp; face geometry</p>
+                </div>
+              </div>
+              <div class="cost-pill" style="border-color: rgba(75, 65, 225, 0.25);">
+                <span style="font-size: 0.68rem; color: var(--on-surface-variant);">Outfit Total</span>
+                <span id="outfitTotalCost" style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; color: var(--secondary);">₹0</span>
+              </div>
+            </div>
+
+            <!-- Occasion Chips -->
+            <div class="occasion-chips-bar">
+              <button class="occasion-chip active" data-occasion="Casual">Casual</button>
+              <button class="occasion-chip" data-occasion="Formal">Formal</button>
+              <button class="occasion-chip" data-occasion="Date Night">Date Night</button>
+              <button class="occasion-chip" data-occasion="Party">Party</button>
+              <button class="occasion-chip" data-occasion="Athletic">Athletic</button>
+            </div>
+
+            <!-- Preferred Budget & Price Controller -->
+            <div class="outfit-budget-bar">
+              <div class="outfit-budget-header">
+                <div class="outfit-budget-label-group">
+                  <span class="material-symbols-outlined" style="font-size: 19px; color: var(--secondary);">payments</span>
+                  <span style="font-family: var(--font-label); font-size: 0.8rem; font-weight: 700; color: var(--on-surface);">Preferred Outfit Budget:</span>
+                  <span id="outfitPreferredBudgetDisplay" class="budget-badge-pill">₹3,500</span>
+                  <span style="font-size: 0.72rem; color: var(--on-surface-variant);">(5 apparel pieces strictly scale to fit this budget)</span>
+                </div>
+                <div class="outfit-budget-presets">
+                  <button type="button" class="budget-preset-chip" onclick="App.setOutfitBudget(2000)">₹2,000</button>
+                  <button type="button" class="budget-preset-chip active" onclick="App.setOutfitBudget(3500)">₹3,500</button>
+                  <button type="button" class="budget-preset-chip" onclick="App.setOutfitBudget(5000)">₹5,000</button>
+                  <button type="button" class="budget-preset-chip" onclick="App.setOutfitBudget(8000)">₹8,000</button>
+                  <button type="button" class="budget-preset-chip" onclick="App.setOutfitBudget(12000)">₹12,000</button>
+                </div>
+              </div>
+              <div class="outfit-budget-slider-wrap">
+                <input type="range" id="outfitBudgetSlider" min="1500" max="15000" step="250" value="3500" class="styled-range" oninput="App.onOutfitBudgetSliderChange(this.value)"/>
+                <div class="slider-ticks">
+                  <span>₹1,500 (Budget Capsule)</span>
+                  <span>₹5,000 (Smart Casual)</span>
+                  <span>₹10,000 (Premium Tailored)</span>
+                  <span>₹15,000 (Designer Luxury)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Palette & Stylist Advice -->
+            <div class="palette-advice-card">
+              <div>
+                <span style="font-family: var(--font-label); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--on-surface-variant); display: block; margin-bottom: 0.4rem;">Color Palette Match</span>
+                <div id="paletteBox" class="palette-swatches-row"></div>
+              </div>
+              <div style="background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); border-radius: var(--radius-sm); padding: 0.6rem 0.85rem;">
+                <span id="stylingAdviceShort" style="font-size: 0.82rem; color: var(--on-surface); line-height: 1.5; display: block;">Tailored chromatic selection curated to complement your skin tone.</span>
+              </div>
+            </div>
+
+            <!-- Head-to-Toe Outfit Grid -->
+            <div id="outfitHeadToToeGrid" class="products-grid"></div>
+          </div>
+
+        </div>
+
+        <!-- Empty state / placeholder -->
+        <div id="reportEmptyState" style="text-align: center; padding: 4rem 2rem; background: var(--surface-container-lowest); border: 1px dashed var(--outline-variant); border-radius: var(--radius-xl); max-width: 560px; margin: 2rem auto;">
+          <span class="material-symbols-outlined" style="font-size: 3.5rem; color: var(--outline); display: block; margin-bottom: 1rem;">clinical_notes</span>
+          <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem; letter-spacing: -0.02em;">No Report Yet</h2>
+          <p style="color: var(--on-surface-variant); font-size: 0.875rem; margin-bottom: 1.75rem; line-height: 1.6;">Run a facial scan from the Scanner tab to generate your personalized AI diagnostic &amp; style report.</p>
+          <button class="btn btn-primary" onclick="App.switchView('view-scanner')">
+            <span class="material-symbols-outlined" style="font-size: 18px;">document_scanner</span>
+            Go to Scanner
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========== VIEW 3: PROGRESS TRACKER ========== -->
+    <section id="view-tracker" class="view-section">
+      <!-- Page Header -->
+      <div style="margin-bottom: 1.5rem;">
+        <h1 class="page-title">Dermatological <span class="gradient-text">Progress Timeline</span></h1>
+        <p class="page-subtitle">Track your skin condition trends, barrier recovery, and scan history across sessions.</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid" id="trackerStatsGrid" style="margin-bottom: 1.25rem;">
+        <div class="stat-card">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span class="material-symbols-outlined" style="font-size: 18px; color: var(--outline);">qr_code_scanner</span>
+            <span class="badge badge-secondary" style="font-size: 0.65rem;">Total</span>
+          </div>
+          <div>
+            <div style="font-family: var(--font-display); font-size: 1.7rem; font-weight: 800; color: var(--on-surface);" id="trackerTotalScans">0</div>
+            <div style="font-family: var(--font-label); font-size: 0.7rem; color: var(--on-surface-variant);">Total Scans</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">face</span>
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary-container); box-shadow: 0 0 6px rgba(0,196,204,0.8);"></div>
+          </div>
+          <div>
+            <div style="font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--primary);" id="trackerSkinType">—</div>
+            <div style="font-family: var(--font-label); font-size: 0.7rem; color: var(--on-surface-variant);">Skin Type</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span class="material-symbols-outlined" style="font-size: 18px; color: var(--secondary);">verified</span>
+            <div style="position: relative; width: 8px; height: 8px;">
+              <div style="position: absolute; width: 100%; height: 100%; border-radius: 50%; background: var(--primary-container); opacity: 0.75; animation: statusPulse 1.5s infinite;"></div>
+              <div style="position: relative; width: 100%; height: 100%; border-radius: 50%; background: var(--primary-container);"></div>
+            </div>
+          </div>
+          <div>
+            <div style="font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--secondary);" id="trackerBarrierStatus">—</div>
+            <div style="font-family: var(--font-label); font-size: 0.7rem; color: var(--on-surface-variant);">Barrier Status</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Chips -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+        <h2 style="font-family: var(--font-display); font-size: 1.05rem; font-weight: 700;">Historical Diagnostic Log</h2>
+        <span id="trackerLogCount" style="font-family: var(--font-label); font-size: 0.72rem; color: var(--outline); font-weight: 600;">No scans yet</span>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 0.25rem;">
+        <button class="filter-chip active" onclick="App.filterScans('all', this)">All Scans</button>
+        <button class="filter-chip" onclick="App.filterScans('skin', this)">Skin Analysis</button>
+        <button class="filter-chip" onclick="App.filterScans('fashion', this)">Fashion</button>
+      </div>
+
+      <!-- Scan Timeline List -->
+      <div id="scanTimelineList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <div style="text-align: center; padding: 3rem 1.5rem; background: var(--surface-container-lowest); border: 1px dashed var(--outline-variant); border-radius: var(--radius-lg);">
+          <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--outline); display: block; margin-bottom: 0.75rem;">timeline</span>
+          <p style="color: var(--on-surface-variant); font-size: 0.85rem;">No scan history yet. Run your first analysis to see it here.</p>
+          <button class="btn btn-primary btn-sm" style="margin-top: 1rem;" onclick="App.switchView('view-scanner')">Start Scanning</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== VIEW 4: USER PROFILE & SETTINGS ========== -->
+    <section id="view-profile" class="view-section">
+      <div style="margin-bottom: 1.25rem;">
+        <h1 class="page-title">My Profile &amp; <span class="gradient-text">Account Settings</span></h1>
+        <p class="page-subtitle">Manage your account details, update your password, and personalize your skincare &amp; fashion preferences.</p>
+      </div>
+
+      <!-- Guest State -->
+      <div id="profileGuestState" style="display: none; text-align: center; padding: 3.5rem 2rem; background: var(--surface-container-lowest); border: 1px solid var(--surface-container-high); border-radius: var(--radius-xl); max-width: 540px; margin: 2rem auto; box-shadow: var(--shadow-sm);">
+        <div style="font-size: 3.5rem; margin-bottom: 1rem;">🔐</div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem; letter-spacing: -0.02em;">Sign In to View Your Profile</h2>
+        <p style="color: var(--on-surface-variant); font-size: 0.88rem; margin-bottom: 1.75rem; line-height: 1.6;">Log in or create an account to manage your credentials and personalize your skincare &amp; fashion budgets.</p>
+        <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" onclick="App.lockApp()">
+            <span class="material-symbols-outlined" style="font-size: 16px;">key</span> Sign In
+          </button>
+          <button type="button" class="btn btn-primary" onclick="App.lockApp()">
+            <span class="material-symbols-outlined" style="font-size: 16px;">person_add</span> Create Account
+          </button>
+        </div>
+      </div>
+
+      <!-- Logged In State -->
+      <div id="profileLoggedInState" class="profile-grid" style="display: none;">
+
+        <!-- User Overview Card -->
+        <div class="profile-card profile-user-card">
+          <div class="profile-avatar-large">
+            <span id="profAvatarInitial">U</span>
+          </div>
+          <div class="profile-user-details">
+            <h2 id="profFullNameDisplay" style="font-size: 1.35rem; margin: 0 0 0.2rem 0; letter-spacing: -0.02em;">User Name</h2>
+            <p id="profEmailDisplay" style="font-size: 0.82rem; color: var(--on-surface-variant); margin: 0 0 0.75rem 0;">user@example.com</p>
+            <div class="profile-badges-row">
+              <span class="badge badge-purple" id="profUserIdBadge">ID: #0</span>
+              <span class="badge badge-info" id="profMemberSinceBadge">Joined Recently</span>
+              <span class="badge badge-success" style="display:flex;align-items:center;gap:0.3rem;">
+                <span style="width:6px;height:6px;border-radius:50%;background:var(--primary);display:inline-block;"></span>
+                Active Session
+              </span>
+            </div>
+          </div>
+          <div style="flex-shrink: 0;">
+            <button class="btn btn-secondary btn-sm" onclick="App.switchView('view-scanner')">
+              <span class="material-symbols-outlined" style="font-size: 15px;">photo_camera</span> New Scan
+            </button>
+          </div>
+        </div>
+
+        <!-- Change Password Card -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <span class="material-symbols-outlined" style="font-size: 1.3rem; color: var(--primary);">key</span>
+              <div>
+                <h3 style="font-size: 1.05rem; margin: 0; letter-spacing: -0.015em;">Change Password</h3>
+                <p style="font-size: 0.73rem; color: var(--on-surface-variant); margin: 0;">Update your account credentials</p>
+              </div>
+            </div>
+          </div>
+
+          <form id="formChangePassword">
+            <div class="form-group">
+              <label class="form-label">Current Password</label>
+              <input type="password" id="oldPasswordInput" class="form-input" placeholder="••••••••" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">New Password (6+ chars)</label>
+              <input type="password" id="newPasswordInput" class="form-input" placeholder="••••••••" minlength="6" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm New Password</label>
+              <input type="password" id="confirmPasswordInput" class="form-input" placeholder="••••••••" minlength="6" required>
+            </div>
+            <button type="submit" id="btnSubmitChangePassword" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+              <span class="material-symbols-outlined" style="font-size: 16px;">lock_reset</span>
+              Update Password
+            </button>
+          </form>
+
+          <!-- Sign Out -->
+          <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--surface-container-high);">
+            <p style="font-size: 0.75rem; color: var(--on-surface-variant); margin-bottom: 0.65rem;">Sign out of your Stylic.AI account on this device.</p>
+            <button class="btn btn-danger" style="width: 100%;" onclick="App.logoutFromProfile()">
+              <span class="material-symbols-outlined" style="font-size: 16px;">logout</span>
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        <!-- Personal Preferences Card -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <span class="material-symbols-outlined" style="font-size: 1.3rem; color: var(--secondary);">tune</span>
+              <div>
+                <h3 style="font-size: 1.05rem; margin: 0; letter-spacing: -0.015em;">Personal Preferences</h3>
+                <p style="font-size: 0.73rem; color: var(--on-surface-variant); margin: 0;">Demographics &amp; Recommendation Budgets</p>
+              </div>
+            </div>
+          </div>
+
+          <form id="formProfileView">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input type="text" id="profViewName" class="form-input" placeholder="Your Name" required>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Age</label>
+                <input type="number" id="profViewAge" class="form-input" placeholder="24" min="10" max="100">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Gender</label>
+                <select id="profViewGender" class="form-input" style="cursor: pointer;">
+                  <option value="unspecified">Select</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="non-binary">Non-Binary</option>
+                  <option value="unspecified">Prefer not to say</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Skincare Budget (₹)</label>
+                <input type="number" id="profViewBudgetSkin" class="form-input" placeholder="2000" min="500" step="100">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fashion Budget (₹)</label>
+                <input type="number" id="profViewBudgetFashion" class="form-input" placeholder="3500" min="500" step="250">
+              </div>
+            </div>
+            <button type="submit" id="btnSaveProfileView" class="btn btn-primary" style="width: 100%; margin-top: 0.25rem;">
+              <span class="material-symbols-outlined" style="font-size: 16px;">save</span>
+              Save Preferences
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= MOBILE APP BOTTOM NAVIGATION BAR ================= -->
+  <nav class="mobile-bottom-bar" id="mobileBottomBar" aria-label="Mobile Navigation">
+    <button class="mobile-bottom-btn active" onclick="App.switchView('view-landing')" data-view="view-landing" id="mobBtnLanding">
+      <span class="material-symbols-outlined">home</span>
+      <span>Home</span>
+    </button>
+    <button class="mobile-bottom-btn" onclick="App.switchView('view-scanner')" data-view="view-scanner" id="mobBtnScanner">
+      <span class="material-symbols-outlined">document_scanner</span>
+      <span>Scanner</span>
+    </button>
+    <button class="mobile-bottom-btn" onclick="App.switchView('view-report')" data-view="view-report" id="mobBtnReport">
+      <span class="material-symbols-outlined">clinical_notes</span>
+      <span>Report</span>
+    </button>
+    <button class="mobile-bottom-btn" onclick="App.switchView('view-tracker')" data-view="view-tracker" id="mobBtnTracker">
+      <span class="material-symbols-outlined">timeline</span>
+      <span>Timeline</span>
+    </button>
+    <button class="mobile-bottom-btn" onclick="App.switchView('view-profile')" data-view="view-profile" id="mobBtnProfile">
+      <span class="material-symbols-outlined">person</span>
+      <span>Profile</span>
+    </button>
+  </nav>
+
+  <!-- ================= TOAST CONTAINER ================= -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- ================= MODALS (kept for compatibility) ================= -->
+  <div id="loginModal" class="modal-overlay">
+    <div class="modal-content">
+      <button class="modal-close" onclick="App.closeModal('loginModal')">&times;</button>
+      <h3 style="font-size: 1.3rem; margin-bottom: 0.25rem; letter-spacing: -0.02em;">Welcome Back</h3>
+      <p style="font-size: 0.82rem; color: var(--on-surface-variant); margin-bottom: 1.25rem;">Sign in to view your scan history and personalized recommendations.</p>
+      <form id="formModalLogin">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="modalLoginEmail" class="form-input" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="modalLoginPassword" class="form-input" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="registerModal" class="modal-overlay">
+    <div class="modal-content">
+      <button class="modal-close" onclick="App.closeModal('registerModal')">&times;</button>
+      <h3 style="font-size: 1.3rem; margin-bottom: 0.25rem; letter-spacing: -0.02em;">Create Account</h3>
+      <p style="font-size: 0.82rem; color: var(--on-surface-variant); margin-bottom: 1.25rem;">Sign up to unlock clinical diagnostics and personalized styling.</p>
+      <form id="formModalRegister">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="modalRegFullName" class="form-input" placeholder="Jane Doe" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="modalRegEmail" class="form-input" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="modalRegPassword" class="form-input" placeholder="••••••••" minlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Core Client & Camera Modules -->
+  <script src="/static/js/api.js?v=2.2"></script>
+  <script src="/static/js/camera.js?v=2.2"></script>
+  <!-- App JS -->
+  <script src="/static/js/app.js?v=2.6"></script>
+
+  <!-- Page-Level Micro-interactions -->
+  <script>
+    // Budget range slider
+    const budgetRange = document.getElementById('budgetRange');
+    const budgetLabel = document.getElementById('budgetLabel');
+    if (budgetRange && budgetLabel) {
+      budgetRange.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        const low = Math.max(500, val - 1500);
+        const high = val + 500;
+        budgetLabel.textContent = `₹${low.toLocaleString()} — ₹${high.toLocaleString()}`;
+      });
+    }
+
+    // Voice dictation simulation
+    const voiceBtn = document.getElementById('voiceBtn');
+    const voiceBtnText = document.getElementById('voiceBtnText');
+    const scanContext = document.getElementById('scanContext');
+    let isListening = false;
+    if (voiceBtn && voiceBtnText && scanContext) {
+      voiceBtn.addEventListener('click', () => {
+        isListening = !isListening;
+        if (isListening) {
+          voiceBtnText.textContent = 'Listening...';
+          voiceBtn.classList.add('recording');
+          setTimeout(() => {
+            scanContext.value = "I have oily skin on my nose and forehead, dark circles under the eyes. Looking for a smart casual look for an office event.";
+            voiceBtnText.textContent = 'Voice';
+            voiceBtn.classList.remove('recording');
+            isListening = false;
+          }, 2000);
+        } else {
+          voiceBtnText.textContent = 'Voice';
+          voiceBtn.classList.remove('recording');
+        }
+      });
+    }
+  </script>
+</body>
+</html>
