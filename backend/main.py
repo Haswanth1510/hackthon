@@ -646,7 +646,8 @@ async def serve_index():
     index_file = FRONTEND_DIR / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file))
-    return JSONResponse({"message": "Skincare & Fashion AI Backend running. Frontend skeleton initializing."})
+    return JSONResponse({"message": "Stylic.AI backend running. Frontend not found.", "status": "ok"})
 
-# Mount frontend directory for styles and scripts
+# Mount /static → frontend/ so that /static/js/app.js, /static/css/style.css, etc. all resolve.
+# Also mount individual asset sub-paths for legacy references.
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")

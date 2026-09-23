@@ -1,0 +1,78 @@
+# Render Blueprint — Stylic.AI
+# Deploy to Render by connecting this repo at https://dashboard.render.com/new/blueprint
+#
+# This file automatically provisions:
+#   • 1 Web Service (FastAPI + frontend)
+#   • 1 Persistent Disk (SQLite database survives redeploys)
+
+services:
+  - type: web
+    name: stylic-ai
+    runtime: python
+    plan: free               # upgrade to "starter" for always-on
+    region: oregon           # us-west-2
+    branch: main
+
+    # ── Build ──────────────────────────────────────────────────
+    buildCommand: pip install -r requirements.txt
+
+    # ── Start ──────────────────────────────────────────────────
+    # Render injects $PORT automatically. We bind to 0.0.0.0 so the
+    # reverse-proxy can reach the container.
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 2
+
+    # ── Persistent Disk ────────────────────────────────────────
+    # Mounts at /data so SQLite database survives every redeploy.
+    # Free plan includes 1 GB disk. Change mountPath to match DB_DIR.
+    disk:
+      name: stylic-ai-db
+      mountPath: /data
+      sizeGB: 1
+
+    # ── Environment Variables ───────────────────────────────────
+    # Add your real secret values in the Render dashboard after deploy.
+    # Values marked sync:false are SECRETS — set them manually in the UI.
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+      - key: DB_PATH
+        value: /data/skincare_fashion.db
+
+      - key: GEMINI_API_KEY
+        sync: false          # Set in Render Dashboard → Environment
+
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash-lite
+
+      - key: GROK_API_KEY
+        sync: false          # Set in Render Dashboard → Environment
+
+      - key: GROQ_API_KEY
+        sync: false          # Set in Render Dashboard → Environment
+
+      - key: GROK_MODEL
+        value: qwen/qwen3.8-27b
+
+      - key: GROK_API_URL
+        value: https://api.groq.com/openai/v1/chat/completions
+
+      - key: ROBOFLOW_API_KEY
+        sync: false          # Set in Render Dashboard → Environment
+
+      - key: ROBOFLOW_MODEL_ID
+        value: skin-problem-detection-multiple-clean/2
+
+      - key: ROBOFLOW_API_URL
+        value: https://serverless.roboflow.com
+
+      - key: JWT_SECRET
+        sync: false          # Set in Render Dashboard → Environment (long random string)
+
+      - key: AMAZON_AFFILIATE_TAG
+        value: skincarefashion-21
+
+      - key: FLIPKART_AFFILIATE_ID
+        value: skincarefashion
+
+      # Render injects PORT automatically — do NOT set it manually

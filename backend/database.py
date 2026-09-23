@@ -3,9 +3,16 @@ import os
 from pathlib import Path
 from contextlib import contextmanager
 
-DB_DIR = Path(__file__).parent.parent / "data"
-DB_DIR.mkdir(exist_ok=True)
-DB_PATH = DB_DIR / "skincare_fashion.db"
+# On Render: DB_PATH=/data/skincare_fashion.db  (persistent disk mounted at /data)
+# Locally:   falls back to ./data/skincare_fashion.db
+_default_db_dir = Path(__file__).parent.parent / "data"
+_default_db_dir.mkdir(exist_ok=True)
+
+DB_PATH = Path(
+    os.getenv("DB_PATH", str(_default_db_dir / "skincare_fashion.db"))
+)
+# Ensure parent directory exists (important when Render mounts a fresh disk)
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 def get_connection():
     conn = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=30)
