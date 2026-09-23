@@ -24,6 +24,12 @@ class UserLoginRequest(BaseModel):
     email: str
     password: str
 
+    @field_validator("email")
+    @classmethod
+    def clean_identifier(cls, v: str) -> str:
+        return v.strip()
+
+
 class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     gender: Optional[str] = None

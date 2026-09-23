@@ -6,9 +6,11 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from backend.main import app
 from backend.database import get_db, init_db
+from backend.services.grok_service import GrokSkinService
 
 class TestSkincareFashionAI(unittest.TestCase):
     @classmethod
@@ -247,19 +249,21 @@ class TestSkincareFashionAI(unittest.TestCase):
         img_b.save(buf_b, format="JPEG")
         b64_b = f"data:image/jpeg;base64,{base64.b64encode(buf_b.getvalue()).decode()}"
 
-        resp_a = self.client.post("/api/skin/analyze", json={
-            "image_base64": b64_a,
-            "landmarks": [{"x": 0.5, "y": 0.5, "z": 0.0} for _ in range(50)]
-        }, headers=headers)
-        self.assertEqual(resp_a.status_code, 200)
-        data_a = resp_a.json()
+        with patch.object(GrokSkinService, "_call_gemini_vision", return_value=None), \
+             patch.object(GrokSkinService, "_call_grok_vision", return_value=None):
+            resp_a = self.client.post("/api/skin/analyze", json={
+                "image_base64": b64_a,
+                "landmarks": [{"x": 0.5, "y": 0.5, "z": 0.0} for _ in range(50)]
+            }, headers=headers)
+            self.assertEqual(resp_a.status_code, 200)
+            data_a = resp_a.json()
 
-        resp_b = self.client.post("/api/skin/analyze", json={
-            "image_base64": b64_b,
-            "landmarks": [{"x": 0.5, "y": 0.5, "z": 0.0} for _ in range(50)]
-        }, headers=headers)
-        self.assertEqual(resp_b.status_code, 200)
-        data_b = resp_b.json()
+            resp_b = self.client.post("/api/skin/analyze", json={
+                "image_base64": b64_b,
+                "landmarks": [{"x": 0.5, "y": 0.5, "z": 0.0} for _ in range(50)]
+            }, headers=headers)
+            self.assertEqual(resp_b.status_code, 200)
+            data_b = resp_b.json()
 
         score_a = data_a["overall_score"]
         score_b = data_b["overall_score"]

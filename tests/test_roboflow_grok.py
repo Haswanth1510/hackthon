@@ -100,12 +100,12 @@ class TestRoboflowGrokIntegration(unittest.TestCase):
 
         self.assertIn("overall_score", diag)
         self.assertIn("issues", diag)
-        self.assertIn("Roboflow CV localized 2 focal lesion(s)", diag["summary"])
+        self.assertIn("Clinical scan localized 2 focal lesion(s)", diag["summary"])
 
         # Check that issues mention localized detections
         acne_issue = next((i for i in diag["issues"] if "Acne" in i["issue_type"]), None)
         self.assertIsNotNone(acne_issue)
-        self.assertIn("Roboflow Computer Vision identified 1 active lesion", acne_issue["description"])
+        self.assertIn("Clinical dermatological scan identified 1 active lesion", acne_issue["description"])
 
     def test_05_api_skin_analyze_endpoint_returns_roboflow_detections(self):
         """Verify /api/skin/analyze endpoint returns roboflow_detections in response."""
@@ -129,7 +129,9 @@ class TestRoboflowGrokIntegration(unittest.TestCase):
         # Generate fake landmarks for validation
         fake_landmarks = [{"x": 0.5, "y": 0.5, "z": 0.0} for _ in range(50)]
 
-        with patch.object(RoboflowSkinService, "detect_skin_issues_async", return_value=mock_detections):
+        with patch.object(RoboflowSkinService, "detect_skin_issues_async", return_value=mock_detections), \
+             patch.object(GrokSkinService, "_call_gemini_vision", return_value=None), \
+             patch.object(GrokSkinService, "_call_grok_vision", return_value=None):
             resp = self.client.post("/api/skin/analyze", json={
                 "image_base64": self.dummy_b64,
                 "landmarks": fake_landmarks,
