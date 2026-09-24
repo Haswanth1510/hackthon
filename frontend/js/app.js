@@ -880,19 +880,29 @@ const App = {
       if (isPartial) {
         partialBanner.style.display = "block";
         if (partialNoticeText) {
-          partialNoticeText.textContent = data.message || "Full clinical scoring is temporarily unavailable due to AI provider demand. Showing detected skin regions and facial geometry from computer vision — full scoring will be available on retry.";
+          partialNoticeText.textContent = data.message || "🤖 AI is too busy — please try later. Showing what we detected so far using computer vision (lesion regions & face geometry). Full clinical scoring, routines, and style curation will be ready once the AI is available again.";
         }
       } else {
         partialBanner.style.display = "none";
       }
     }
 
-    // 3. Short & Clear Analysis: Badges & Summary in Pure English
+    // 3. Short & Clear Analysis: Summary
     const summaryText = document.getElementById("diagSummary");
     if (summaryText) {
       summaryText.textContent = isPartial
-        ? (data.message || "Full clinical scoring is temporarily unavailable due to AI provider demand. Showing detected skin regions and facial geometry from computer vision — full scoring will be available on retry.")
+        ? "🤖 AI is too busy — please try later."
         : (data.summary || "Comprehensive clinical analysis synthesized from 3D biometric geometry, lesion detection, and dermatological intelligence.");
+      // Style it prominently in partial mode
+      if (isPartial) {
+        summaryText.style.fontWeight = "600";
+        summaryText.style.color = "var(--on-surface)";
+        summaryText.style.fontSize = "1rem";
+      } else {
+        summaryText.style.fontWeight = "";
+        summaryText.style.color = "";
+        summaryText.style.fontSize = "";
+      }
     }
 
     const badgeType = document.getElementById("badgeSkinType");
