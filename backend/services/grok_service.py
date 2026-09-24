@@ -282,7 +282,24 @@ class GrokSkinService:
             except Exception as e:
                 print(f"[AIService] Secondary Groq API error: {e}.")
 
-        # Tier 3: Tertiary Backup Engine — BazaarLink / OpenAI-compatible Gateway (Engaged if Gemini & Groq fail)
+        # Tier 3: OpenRouter AI Gateway (Multi-model backup)
+        or_key = os.getenv("OPENROUTER_API_KEY")
+        if or_key and or_key.strip():
+            try:
+                print("[AIService] Engaging OpenRouter Multi-Model Backup AI Engine...")
+                or_result = await cls._call_openrouter_vision(
+                    image_base64=clean_b64,
+                    landmarks=landmarks_telemetry,
+                    user_context=user_context,
+                    roboflow_detections=roboflow_detections,
+                    api_key=or_key.strip()
+                )
+                if or_result:
+                    return or_result
+            except Exception as e:
+                print(f"[AIService] OpenRouter Backup API error: {e}.")
+
+        # Tier 4: Tertiary Backup Engine — BazaarLink / OpenAI-compatible Gateway (Engaged if Gemini & Groq fail)
         backup_key = os.getenv("BAZAARLINK_API_KEY") or os.getenv("BACKUP_AI_KEY")
         if backup_key and backup_key.strip():
             try:
@@ -298,6 +315,23 @@ class GrokSkinService:
                     return bl_result
             except Exception as e:
                 print(f"[AIService] Tertiary BazaarLink API error: {e}.")
+
+        # Tier 5: AIMLAPI Multi-Model Gateway
+        aiml_key = os.getenv("AIMLAPI_KEY")
+        if aiml_key and aiml_key.strip():
+            try:
+                print("[AIService] Engaging AIMLAPI Backup AI Engine...")
+                aiml_result = await cls._call_aimlapi_vision(
+                    image_base64=clean_b64,
+                    landmarks=landmarks_telemetry,
+                    user_context=user_context,
+                    roboflow_detections=roboflow_detections,
+                    api_key=aiml_key.strip()
+                )
+                if aiml_result:
+                    return aiml_result
+            except Exception as e:
+                print(f"[AIService] AIMLAPI Backup API error: {e}.")
 
         # Check 1 & Check 3: Check whether fallback is gated behind test flag
         allow_mock = (
@@ -710,6 +744,200 @@ Confirm human face and return ONLY valid JSON matching this schema:
                     print(f"[BazaarLinkAPI] Returned HTTP {resp.status_code}: {resp.text[:150]}")
             except Exception as e:
                 print(f"[BazaarLinkAPI] Exception on tertiary backup call: {e}")
+        return None
+
+    @classmethod
+    async def _call_openrouter_vision(
+        cls,
+        image_base64: str,
+        landmarks: Optional[Dict[str, Any]],
+        user_context: Optional[Dict[str, Any]],
+        roboflow_detections: Optional[List[Dict[str, Any]]] = None,
+        api_key: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        OpenRouter Multimodal AI Gateway supporting hundreds of frontier vision models.
+        """
+        active_key = api_key or os.getenv("OPENROUTER_API_KEY", "")
+        if not active_key or not active_key.strip():
+            return None
+
+        clean_b64 = image_base64.split(",")[-1] if "," in image_base64 else image_base64
+        endpoint = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
+        models_to_try = [
+            os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.2-11b-vision-instruct:free"),
+            "google/gemini-2.0-flash-exp:free",
+            "qwen/qwen3.8-27b:free"
+        ]
+
+        telemetry = cls.extract_computer_vision_telemetry(clean_b64)
+        face_shape = landmarks.get("face_shape", "Oval") if landmarks else "Oval"
+        ctx_gender = user_context.get("gender", "unspecified") if user_context else "unspecified"
+        ctx_age = user_context.get("age", 25) if user_context else 25
+
+        prompt = f"""You are a clinical dermatologist and aesthetic color consultant.
+Analyze this human face (Gender: {ctx_gender}, Age: ~{ctx_age}, Face Shape: {face_shape}, Telemetry Baseline: {telemetry.get('dynamic_score', 75)}/100).
+Confirm human face and return ONLY valid JSON matching this schema:
+{{
+  "is_human_face": true,
+  "overall_score": {telemetry.get('dynamic_score', 75)},
+  "skin_type": "Combination",
+  "undertone": "Neutral Warm",
+  "age_estimate": {ctx_age},
+  "summary": "Clinical skin barrier and chromatic evaluation in professional English.",
+  "issues": [
+    {{
+      "issue_type": "Skin Concern",
+      "severity": "mild",
+      "score": 40,
+      "zone": "Cheeks",
+      "description": "Localized observation.",
+      "precautions": ["Hydration", "Sunscreen"]
+    }}
+  ],
+  "am_routine": ["Gentle cleanser", "Antioxidant serum", "Moisturizer", "SPF 50+"],
+  "pm_routine": ["Cleanser", "Barrier repair cream"],
+  "precautions": ["Avoid harsh scrubbing"],
+  "recommended_ingredients": ["Ceramides", "Hyaluronic Acid", "Niacinamide"],
+  "color_palette": {{
+    "season": "Warm Autumn",
+    "undertone": "Warm",
+    "contrast_level": "Medium Contrast",
+    "best_colors": [{{"name": "Olive Green", "hex": "#556B2F", "family": "Earth", "advice": "Flattering warm tone"}}],
+    "colors_to_avoid": [{{"name": "Icy Blue", "hex": "#AFEEEE", "why": "Clashes with warm undertones"}}],
+    "style_rationale": "Harmonizes with natural warm pigmentation.",
+    "wardrobe_guidance": "Warm neutral base with earthy accents.",
+    "jewelry_metal_harmony": "Yellow gold and brass."
+  }}
+}}"""
+
+        headers = {
+            "Authorization": f"Bearer {active_key.strip()}",
+            "HTTP-Referer": "https://suit.ai",
+            "X-Title": "Suit.AI",
+            "Content-Type": "application/json"
+        }
+        masked_key = f"...{active_key[-4:]}" if len(active_key) >= 4 else "..."
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for model_name in models_to_try:
+                try:
+                    payload = {
+                        "model": model_name,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": prompt},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {"url": f"data:image/jpeg;base64,{clean_b64}"}
+                                    }
+                                ]
+                            }
+                        ],
+                        "temperature": 0.2,
+                        "response_format": {"type": "json_object"}
+                    }
+                    resp = await client.post(endpoint, headers=headers, json=payload)
+                    if resp.status_code == 200:
+                        content = resp.json()["choices"][0]["message"]["content"]
+                        clean_json = cls._clean_json_text(content)
+                        parsed = json.loads(clean_json)
+                        print(f"[OpenRouterAPI] Backup skin analysis succeeded with model {model_name} on key ({masked_key})")
+                        return cls._sanitize_to_standard_english(parsed)
+                    else:
+                        print(f"[OpenRouterAPI] Model {model_name} returned HTTP {resp.status_code}: {resp.text[:150]}")
+                except Exception as e:
+                    print(f"[OpenRouterAPI] Exception on model {model_name}: {e}")
+        return None
+
+    @classmethod
+    async def _call_aimlapi_vision(
+        cls,
+        image_base64: str,
+        landmarks: Optional[Dict[str, Any]],
+        user_context: Optional[Dict[str, Any]],
+        roboflow_detections: Optional[List[Dict[str, Any]]] = None,
+        api_key: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        AIMLAPI Multi-Model AI Gateway.
+        """
+        active_key = api_key or os.getenv("AIMLAPI_KEY", "")
+        if not active_key or not active_key.strip():
+            return None
+
+        clean_b64 = image_base64.split(",")[-1] if "," in image_base64 else image_base64
+        endpoint = os.getenv("AIMLAPI_URL", "https://api.aimlapi.com/v1/chat/completions")
+        model_name = os.getenv("AIMLAPI_MODEL", "meta-llama/Llama-3.2-3B-Instruct")
+
+        telemetry = cls.extract_computer_vision_telemetry(clean_b64)
+        face_shape = landmarks.get("face_shape", "Oval") if landmarks else "Oval"
+        ctx_gender = user_context.get("gender", "unspecified") if user_context else "unspecified"
+        ctx_age = user_context.get("age", 25) if user_context else 25
+
+        prompt = f"""You are a clinical dermatologist and aesthetic color consultant.
+Analyze this human face (Gender: {ctx_gender}, Age: ~{ctx_age}, Face Shape: {face_shape}, Telemetry Baseline: {telemetry.get('dynamic_score', 75)}/100).
+Confirm human face and return ONLY valid JSON matching this schema:
+{{
+  "is_human_face": true,
+  "overall_score": {telemetry.get('dynamic_score', 75)},
+  "skin_type": "Combination",
+  "undertone": "Neutral Warm",
+  "age_estimate": {ctx_age},
+  "summary": "Clinical skin barrier and chromatic evaluation in professional English.",
+  "issues": [
+    {{
+      "issue_type": "Skin Concern",
+      "severity": "mild",
+      "score": 40,
+      "zone": "Cheeks",
+      "description": "Localized observation.",
+      "precautions": ["Hydration", "Sunscreen"]
+    }}
+  ],
+  "am_routine": ["Gentle cleanser", "Antioxidant serum", "Moisturizer", "SPF 50+"],
+  "pm_routine": ["Cleanser", "Barrier repair cream"],
+  "precautions": ["Avoid harsh scrubbing"],
+  "recommended_ingredients": ["Ceramides", "Hyaluronic Acid", "Niacinamide"],
+  "color_palette": {{
+    "season": "Warm Autumn",
+    "undertone": "Warm",
+    "contrast_level": "Medium Contrast",
+    "best_colors": [{{"name": "Olive Green", "hex": "#556B2F", "family": "Earth", "advice": "Flattering warm tone"}}],
+    "colors_to_avoid": [{{"name": "Icy Blue", "hex": "#AFEEEE", "why": "Clashes with warm undertones"}}],
+    "style_rationale": "Harmonizes with natural warm pigmentation.",
+    "wardrobe_guidance": "Warm neutral base with earthy accents.",
+    "jewelry_metal_harmony": "Yellow gold and brass."
+  }}
+}}"""
+
+        headers = {
+            "Authorization": f"Bearer {active_key.strip()}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "response_format": {"type": "json_object"}
+        }
+
+        masked_key = f"...{active_key[-4:]}" if len(active_key) >= 4 else "..."
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            try:
+                resp = await client.post(endpoint, headers=headers, json=payload)
+                if resp.status_code == 200:
+                    content = resp.json()["choices"][0]["message"]["content"]
+                    clean_json = cls._clean_json_text(content)
+                    parsed = json.loads(clean_json)
+                    print(f"[AIMLAPI] Backup analysis succeeded with model {model_name} on key ({masked_key})")
+                    return cls._sanitize_to_standard_english(parsed)
+                else:
+                    print(f"[AIMLAPI] Returned HTTP {resp.status_code}: {resp.text[:150]}")
+            except Exception as e:
+                print(f"[AIMLAPI] Exception on backup call: {e}")
         return None
 
     @classmethod

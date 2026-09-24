@@ -49,6 +49,15 @@ services:
       - key: GROK_API_URL
         value: https://api.groq.com/openai/v1/chat/completions
 
+      - key: OPENROUTER_API_KEY
+        sync: false          # Set in Render Dashboard → Environment (OpenRouter multi-model backup)
+
+      - key: OPENROUTER_MODEL
+        value: meta-llama/llama-3.2-11b-vision-instruct:free
+
+      - key: OPENROUTER_API_URL
+        value: https://openrouter.ai/api/v1/chat/completions
+
       - key: BAZAARLINK_API_KEY
         sync: false          # Set in Render Dashboard → Environment (backup AI key)
 
@@ -60,6 +69,16 @@ services:
 
       - key: BAZAARLINK_API_URL
         value: https://api.bazaarlink.ai/v1/chat/completions
+
+      - key: AIMLAPI_KEY
+        sync: false          # Set in Render Dashboard → Environment (AIMLAPI backup)
+
+      - key: AIMLAPI_URL
+        value: https://api.aimlapi.com/v1/chat/completions
+
+      - key: AIMLAPI_MODEL
+        value: meta-llama/Llama-3.2-3B-Instruct
+
 
 
       - key: ROBOFLOW_API_KEY
