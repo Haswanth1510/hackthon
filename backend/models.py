@@ -1,6 +1,6 @@
 import re
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # --- Auth Models ---
 class UserRegisterRequest(BaseModel):
@@ -24,10 +24,30 @@ class UserLoginRequest(BaseModel):
     email: str
     password: str
 
-    @field_validator("email")
+    @model_validator(mode="before")
     @classmethod
-    def clean_identifier(cls, v: str) -> str:
-        return v.strip()
+    def normalize_login_payload(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Normalize email, userEmail, username, loginEmail
+            raw_email = (
+                data.get("email") or
+                data.get("userEmail") or
+                data.get("username") or
+                data.get("loginEmail") or
+                ""
+            )
+            # Normalize password, userPassword, loginPassword
+            raw_pwd = (
+                data.get("password") or
+                data.get("userPassword") or
+                data.get("loginPassword") or
+                ""
+            )
+            return {
+                "email": str(raw_email).strip(),
+                "password": str(raw_pwd)
+            }
+        return data
 
 
 class UserProfileUpdate(BaseModel):

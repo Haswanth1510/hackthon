@@ -1,9 +1,17 @@
 import os
 import json
+import asyncio
 from typing import Dict, Any, List, Optional
+import httpx
 from dotenv import load_dotenv
 
+from backend.services.amazon_paapi_service import AmazonPAAPIService
+
 load_dotenv()
+
+# Dedicated Fashion & Outfit Gemini Key (Independent from Skin Key)
+GEMINI_API_KEY_FASHION = os.getenv("GEMINI_API_KEY_FASHION") or os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 
 class FashionService:
     """
@@ -25,6 +33,166 @@ class FashionService:
         return ProductService.generate_affiliate_url(platform, query, direct_url=direct_url, asin=asin)
 
     @classmethod
+    async def _call_gemini_fashion(
+        cls,
+        occasion: str,
+        skin_undertone: str,
+        face_shape: str,
+        gender: str,
+        budget_inr: float,
+        style_preference: str,
+        color_palette: Optional[Dict[str, Any]] = None,
+        age: int = 25
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Calls Google Gemini API using dedicated GEMINI_API_KEY_FASHION key.
+        Applies retry-with-backoff on 429 rate limits independently from skin analysis.
+        Logs distinctly if rate limits or errors occur on the fashion key.
+        """
+        active_key = os.getenv("GEMINI_API_KEY_FASHION") or os.getenv("GEMINI_API_KEY", "")
+        if not active_key or not active_key.strip():
+            print("[GeminiFashionAPI Error] No fashion API key configured (GEMINI_API_KEY_FASHION / GEMINI_API_KEY missing).")
+            return None
+
+        masked_key = f"...{active_key.strip()[-4:]}" if len(active_key.strip()) >= 4 else "..."
+        print(f"[GeminiFashionAPI] Initiating outfit styling with dedicated fashion key ({masked_key})")
+
+        best_colors = color_palette.get("best_colors", []) if color_palette else []
+        palette_desc = ", ".join([f"{c.get('name', '')} ({c.get('hex', '')})" for c in best_colors[:5]]) if best_colors else f"Flattering to {skin_undertone} undertones"
+
+        prompt = f"""You are an elite personal fashion stylist and aesthetic consultant.
+Design a cohesive, complete 5-piece Head-to-Toe capsule outfit (Headwear, Topwear, Bottomwear, Footwear, Accessory) for:
+- Gender: {gender}
+- Age: {age}
+- Diagnosed Skin Undertone: {skin_undertone}
+- Face Shape: {face_shape}
+- Occasion: {occasion}
+- Style Aesthetic: {style_preference}
+- Total Budget: INR {budget_inr:.0f}
+- Flattering Chromatic Colors: {palette_desc}
+
+Requirements:
+1. Provide exactly 5 pieces:
+   - Piece 1: Headwear / Hair accessory (hat, cap, headband, hair clip)
+   - Piece 2: Topwear (shirt, blouse, blazer, t-shirt, kurta)
+   - Piece 3: Bottomwear (trousers, jeans, chinos, skirt)
+   - Piece 4: Footwear (heels, sneakers, loafers, boots, flats)
+   - Piece 5: Accessory (handbag, tote, watch, belt, jewelry)
+2. Total price sum of all 5 items MUST NOT exceed {budget_inr:.0f} INR.
+3. For each piece, generate precise Amazon India search keywords including brand name, garment category, and color so that an Amazon SearchItems query finds the real product.
+
+Return ONLY a valid JSON object matching this schema:
+{{
+  "style_name": "{style_preference} · {gender.capitalize()} Capsule ({occasion})",
+  "styling_tips": [
+    "Tip 1 regarding chromatic harmony with skin undertone",
+    "Tip 2 regarding silhouette and facial geometry balance"
+  ],
+  "items": [
+    {{
+      "type": "Headwear",
+      "name": "Item Name",
+      "brand": "Brand Name",
+      "color_name": "Color Name",
+      "color_hex": "#HEX",
+      "price": 299,
+      "keywords": "Brand Name Garment Category Color Name"
+    }},
+    {{
+      "type": "Topwear",
+      "name": "Item Name",
+      "brand": "Brand Name",
+      "color_name": "Color Name",
+      "color_hex": "#HEX",
+      "price": 999,
+      "keywords": "Brand Name Garment Category Color Name"
+    }},
+    {{
+      "type": "Bottomwear",
+      "name": "Item Name",
+      "brand": "Brand Name",
+      "color_name": "Color Name",
+      "color_hex": "#HEX",
+      "price": 1099,
+      "keywords": "Brand Name Garment Category Color Name"
+    }},
+    {{
+      "type": "Footwear",
+      "name": "Item Name",
+      "brand": "Brand Name",
+      "color_name": "Color Name",
+      "color_hex": "#HEX",
+      "price": 899,
+      "keywords": "Brand Name Garment Category Color Name"
+    }},
+    {{
+      "type": "Accessory",
+      "name": "Item Name",
+      "brand": "Brand Name",
+      "color_name": "Color Name",
+      "color_hex": "#HEX",
+      "price": 499,
+      "keywords": "Brand Name Garment Category Color Name"
+    }}
+  ]
+}}
+"""
+        models_to_try = [
+            os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest"),
+            "gemini-flash-lite-latest",
+            "gemini-flash-latest"
+        ]
+        seen = set()
+        models = [m for m in models_to_try if not (m in seen or seen.add(m))]
+
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "temperature": 0.3
+            }
+        }
+
+        max_retries = 3
+        base_delay = 1.0
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for model_name in models:
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={active_key.strip()}"
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            candidates = data.get("candidates", [])
+                            if candidates and "content" in candidates[0]:
+                                parts = candidates[0]["content"].get("parts", [])
+                                if parts and "text" in parts[0]:
+                                    parsed = json.loads(parts[0]["text"])
+                                    if "items" in parsed and len(parsed["items"]) >= 3:
+                                        print(f"[GeminiFashionAPI] Outfit styling succeeded on fashion key ({masked_key}) with model {model_name}")
+                                        return parsed
+                        elif resp.status_code == 429:
+                            delay = base_delay * (2 ** (attempt - 1))
+                            print(f"[GeminiFashionAPI] Rate limit (HTTP 429) on fashion key ({masked_key}) with model {model_name}. Attempt {attempt}/{max_retries}. Backing off {delay:.1f}s...")
+                            if attempt < max_retries:
+                                await asyncio.sleep(delay)
+                                continue
+                            else:
+                                print(f"[GeminiFashionAPI] Exhausted retries for model {model_name} due to rate limiting on fashion key ({masked_key}).")
+                        else:
+                            print(f"[GeminiFashionAPI] Fashion key ({masked_key}) with model {model_name} returned HTTP {resp.status_code}: {resp.text[:150]}")
+                            break
+                    except Exception as e:
+                        delay = base_delay * (2 ** (attempt - 1))
+                        print(f"[GeminiFashionAPI] Exception on fashion key ({masked_key}) with model {model_name} (Attempt {attempt}/{max_retries}): {e}")
+                        if attempt < max_retries:
+                            await asyncio.sleep(delay)
+
+        print(f"[GeminiFashionAPI] Fashion AI call failed on key ({masked_key}). Engaging curated chromatic ensemble fallback.")
+        return None
+
+    @classmethod
     async def recommend_outfit(
         cls,
         occasion: str = "Casual",
@@ -33,12 +201,13 @@ class FashionService:
         gender: str = "unspecified",
         budget_inr: Optional[float] = None,
         style_preference: str = "Modern Minimalist",
-        color_palette: Optional[Dict[str, Any]] = None
+        color_palette: Optional[Dict[str, Any]] = None,
+        age: int = 25
     ) -> Dict[str, Any]:
         """
         Builds a complete Head-to-Toe outfit (Hat/Hairwear, Topwear, Bottomwear, Shoes, Accessories)
-        tailored directly in the AI diagnosed chromatic skin colors, strictly observing
-        the user's preferred budget price and creating direct product page affiliate links for each piece.
+        tailored in the AI diagnosed chromatic skin colors and verified with real Amazon Product Advertising API (SearchItems).
+        Uses independent GEMINI_API_KEY_FASHION key for fashion generation.
         """
         preferred_budget = float(budget_inr) if (budget_inr is not None and budget_inr > 0) else 3500.0
 
@@ -84,7 +253,7 @@ class FashionService:
             p_acc = 149
             p_foot = max(199, p_foot - 50)
 
-        # 3. Occasion & Gender Apparel Templates with Diagnosed Colors & Direct Product Links
+        # 3. Occasion & Gender Apparel Templates (used as fallbacks or base blueprints)
         occ = (occasion or "Casual").strip().title()
         gen_clean = (gender or "").strip().lower()
         is_female = gen_clean in ["female", "woman", "women", "f"]
@@ -94,44 +263,96 @@ class FashionService:
         else:
             items_def = cls._get_male_ensemble(occ, c_head, c_top, c_bot, c_foot, c_acc, p_head, p_top, p_bot, p_foot, p_acc)
 
+        # 4. Attempt Gemini Fashion Call (uses dedicated GEMINI_API_KEY_FASHION)
+        gemini_fashion = await cls._call_gemini_fashion(
+            occasion=occ,
+            skin_undertone=skin_undertone,
+            face_shape=face_shape,
+            gender=gender,
+            budget_inr=preferred_budget,
+            style_preference=style_preference,
+            color_palette=color_palette,
+            age=age
+        )
+
         selected_items = []
         actual_total = 0.0
+        gender_desc = "Women's" if is_female else ("Men's" if gen_clean in ["male", "man", "men", "m"] else "Unisex")
 
-        for it in items_def:
-            q = f"{it['brand']} {it['name']}"
-            aff_url = cls._create_affiliate_link(
-                it["plat"],
-                q,
-                direct_url=it.get("direct_url"),
-                asin=it.get("asin")
-            )
-            item_obj = {
-                "item_type": it["type"],
-                "name": it["name"],
-                "brand": it["brand"],
-                "price_inr": float(it["price"]),
-                "platform": it["plat"],
-                "product_url": aff_url,
-                "image_url": it["img"],
-                "color_name": it["color"]["name"],
-                "color_hex": it["color"]["hex"]
-            }
-            selected_items.append(item_obj)
-            actual_total += it["price"]
+        if gemini_fashion and "items" in gemini_fashion and len(gemini_fashion["items"]) >= 3:
+            # Reconcile Gemini items with real Amazon PA-API search
+            raw_items = gemini_fashion["items"]
+            for idx, g_item in enumerate(raw_items[:5]):
+                fallback_template = items_def[idx] if idx < len(items_def) else items_def[0]
+                keywords = g_item.get("keywords") or f"{g_item.get('brand', '')} {g_item.get('name', '')} {g_item.get('color_name', '')}".strip()
+                
+                # Search real Amazon PA-API (SearchItems) with fallback
+                real_amazon_prod = await AmazonPAAPIService.search_item(
+                    keywords=keywords,
+                    fallback_data=fallback_template
+                )
+
+                color_name = g_item.get("color_name") or fallback_template["color"]["name"]
+                color_hex = g_item.get("color_hex") or fallback_template["color"]["hex"]
+                item_price = float(real_amazon_prod.get("price_inr") or g_item.get("price") or fallback_template["price"])
+
+                selected_items.append({
+                    "item_type": g_item.get("type") or fallback_template["type"],
+                    "name": real_amazon_prod["title"],
+                    "brand": real_amazon_prod.get("brand") or g_item.get("brand") or fallback_template["brand"],
+                    "price_inr": round(item_price, 2),
+                    "platform": "Amazon",
+                    "product_url": real_amazon_prod["product_url"],
+                    "image_url": real_amazon_prod["image_url"],
+                    "color_name": color_name,
+                    "color_hex": color_hex,
+                    "asin": real_amazon_prod.get("asin")
+                })
+                actual_total += item_price
+
+            style_name = gemini_fashion.get("style_name") or f"{style_preference} · {gender_desc} Head-to-Toe ({occ})"
+            styling_tips = gemini_fashion.get("styling_tips") or [
+                f"Chromatic Color Match ({season}): Tailored upper silhouette in {c_top['name']} ({c_top['hex']}) harmonizes with your skin undertones.",
+                f"Budget Calibration: Complete 5-piece capsule ensemble scaled within your target budget of ₹{preferred_budget:,.0f} (Total: ₹{actual_total:,.0f}).",
+                f"Real Amazon Product Links: Real products linked with one-click purchasing on Amazon India."
+            ]
+        else:
+            # Fallback path: use verified chromatic ensemble and query Amazon PA-API with fallback
+            for it in items_def:
+                keywords = f"{it['brand']} {it['name']} {it['color']['name']}"
+                real_amazon_prod = await AmazonPAAPIService.search_item(
+                    keywords=keywords,
+                    fallback_data=it
+                )
+
+                item_price = float(real_amazon_prod.get("price_inr") or it["price"])
+                selected_items.append({
+                    "item_type": it["type"],
+                    "name": real_amazon_prod["title"],
+                    "brand": real_amazon_prod.get("brand") or it["brand"],
+                    "price_inr": round(item_price, 2),
+                    "platform": "Amazon",
+                    "product_url": real_amazon_prod["product_url"],
+                    "image_url": real_amazon_prod["image_url"],
+                    "color_name": it["color"]["name"],
+                    "color_hex": it["color"]["hex"],
+                    "asin": real_amazon_prod.get("asin")
+                })
+                actual_total += item_price
+
+            style_name = f"{style_preference} · {gender_desc} Head-to-Toe ({occ})"
+            styling_tips = [
+                f"Chromatic Color Match ({season}): Upper silhouette in {c_top['name']} ({c_top['hex']}) harmonizes with your diagnosed skin undertones, paired with {c_bot['name']} bottoms.",
+                f"Budget Optimization: Complete 5-piece {gender_desc} capsule ensemble curated within your preferred budget of ₹{preferred_budget:,.0f} (Total: ₹{actual_total:,.0f}).",
+                f"Real Amazon Integration: Real Amazon product listings with direct purchase URLs and tracked affiliate discount.",
+                f"Facial Harmony: Neckline contouring and {items_def[0]['name']} naturally frame your {face_shape} facial profile."
+            ]
 
         palette_list = [c["name"] for c in best_colors] if best_colors else [c_top["name"], c_bot["name"], c_head["name"], c_foot["name"]]
 
-        gender_desc = "Women's" if is_female else ("Men's" if gen_clean in ["male", "man", "men", "m"] else "Unisex")
-        styling_tips = [
-            f"Chromatic Color Match ({season}): Upper silhouette in {c_top['name']} ({c_top['hex']}) harmonizes with your diagnosed skin undertones, paired with {c_bot['name']} bottoms.",
-            f"Budget Optimization: Complete 5-piece {gender_desc} capsule ensemble curated within your preferred budget of ₹{preferred_budget:,.0f} (Total: ₹{actual_total:,.0f}).",
-            f"Direct Verified Links: Direct Amazon product page links provide one-click purchasing with your active affiliate discount.",
-            f"Facial Harmony: Neckline contouring and {items_def[0]['name']} naturally frame your {face_shape} facial profile."
-        ]
-
         return {
             "occasion": occ,
-            "style_name": f"{style_preference} · {gender_desc} Head-to-Toe ({occ})",
+            "style_name": style_name,
             "undertone_match": skin_undertone,
             "total_cost_inr": round(actual_total, 2),
             "budget_limit_inr": preferred_budget,

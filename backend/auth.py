@@ -22,14 +22,46 @@ def hash_password(password: str) -> str:
     return f"{salt.hex()}:{key.hex()}"
 
 def verify_password(stored_password: str, provided_password: str) -> bool:
-    """Verifies provided password against stored salt:hash."""
-    try:
-        salt_hex, key_hex = stored_password.split(":")
-        salt = bytes.fromhex(salt_hex)
-        expected_key = hashlib.pbkdf2_hmac('sha256', provided_password.encode('utf-8'), salt, 100000)
-        return hmac.compare_digest(expected_key.hex(), key_hex)
-    except Exception:
+    """
+    Verifies provided password against stored hash.
+    Supports:
+    1. PBKDF2-HMAC-SHA256 (salt_hex:key_hex)
+    2. bcrypt ($2b$, $2a$, $2y$)
+    3. Plain SHA-256 fallback for legacy migrations
+    """
+    if not stored_password or not provided_password:
         return False
+
+    stored_password = stored_password.strip()
+
+    # 1. Bcrypt hash check
+    if stored_password.startswith(("$2a$", "$2b$", "$2y$")):
+        try:
+            import bcrypt
+            return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password.encode('utf-8'))
+        except Exception as e:
+            print(f"[Auth Error] Bcrypt verification exception: {e}")
+            return False
+
+    # 2. PBKDF2-HMAC-SHA256 (salt:key)
+    if ":" in stored_password:
+        try:
+            salt_hex, key_hex = stored_password.split(":", 1)
+            salt = bytes.fromhex(salt_hex)
+            expected_key = hashlib.pbkdf2_hmac('sha256', provided_password.encode('utf-8'), salt, 100000)
+            return hmac.compare_digest(expected_key.hex(), key_hex)
+        except Exception as e:
+            print(f"[Auth Error] PBKDF2 verification exception: {e}")
+
+    # 3. Plain SHA-256 fallback
+    try:
+        sha256_hash = hashlib.sha256(provided_password.encode('utf-8')).hexdigest()
+        if hmac.compare_digest(sha256_hash, stored_password):
+            return True
+    except Exception:
+        pass
+
+    return False
 
 def create_access_token(user_id: int, email: str) -> str:
     """Generates signed payload token containing user_id and expiration."""

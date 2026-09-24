@@ -139,12 +139,29 @@ async def register(req: UserRegisterRequest):
 
 @app.post("/api/auth/login", response_model=TokenResponse)
 async def login(req: UserLoginRequest):
+    clean_identifier = req.email.strip().lower()
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = ?", (req.email.lower(),))
+        # Case-insensitive, whitespace-trimmed query on email
+        cursor.execute("SELECT * FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))", (clean_identifier,))
         row = cursor.fetchone()
-        if not row or not verify_password(row["password_hash"], req.password):
+
+        # Fallback: check full_name in case username was provided instead of email
+        if not row:
+            cursor.execute("SELECT * FROM users WHERE LOWER(TRIM(full_name)) = LOWER(TRIM(?))", (req.email.strip(),))
+            row = cursor.fetchone()
+
+        if not row:
+            print(f"[AuthLogin Debug] User lookup failed for identifier: '{clean_identifier}'")
             raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        # Multi-algorithm password verification (PBKDF2, bcrypt, SHA256)
+        is_valid = verify_password(row["password_hash"], req.password)
+        if not is_valid:
+            print(f"[AuthLogin Debug] Password verification failed for user ID {row['id']} ({row['email']})")
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        print(f"[AuthLogin Debug] Authentication successful for user ID {row['id']} ({row['email']})")
 
         user_id = row["id"]
         token = create_access_token(user_id, row["email"])
@@ -268,13 +285,48 @@ async def analyze_skin(
         "gender": current_user["gender"] if current_user else "unspecified",
         "notes": req.notes or ""
     }
-    async with AI_SEMAPHORE:
-        diagnosis = await GrokSkinService.analyze_skin(
+    # 3. Independent Concurrent AI Execution (Split across two separate Gemini keys):
+    # Key 1 (GEMINI_API_KEY_SKIN): Clinical skin analysis
+    # Key 2 (GEMINI_API_KEY_FASHION): Independent fashion & head-to-toe outfit curation
+    fashion_budget = req.budget_fashion if (req.budget_fashion and req.budget_fashion > 0) else None
+    user_age = user_context.get("age", 25)
+    face_shape = face_geometry.get("face_shape", "Oval")
+
+    # Extract objective computer vision telemetry for preliminary undertone
+    clean_b64 = req.image_base64.split(",")[-1] if "," in (req.image_base64 or "") else (req.image_base64 or "")
+    prelim_telemetry = GrokSkinService.extract_computer_vision_telemetry(clean_b64) if clean_b64 else {}
+    prelim_undertone = "Warm" if prelim_telemetry.get("erythema_index", 0) > 0.05 else ("Cool" if prelim_telemetry.get("overall_lum", 100) > 130 else "Neutral")
+
+    skin_task = asyncio.create_task(
+        GrokSkinService.analyze_skin(
             image_base64=req.image_base64,
             landmarks_telemetry=face_geometry,
             user_context=user_context,
             roboflow_detections=roboflow_detections
         )
+    )
+
+    fashion_task = asyncio.create_task(
+        FashionService.recommend_outfit(
+            occasion="Casual",
+            skin_undertone=prelim_undertone,
+            face_shape=face_shape,
+            gender=user_context["gender"],
+            budget_inr=fashion_budget,
+            style_preference="Modern Minimalist",
+            color_palette=None,
+            age=user_age
+        )
+    )
+
+    # Await both independent AI calls concurrently
+    diagnosis, outfit_data = await asyncio.gather(skin_task, fashion_task)
+    color_palette = diagnosis.get("color_palette")
+
+    # Align chromatic palette if diagnosed by skin AI
+    if color_palette and color_palette.get("best_colors"):
+        outfit_data["palette"] = [c["name"] for c in color_palette["best_colors"]]
+        outfit_data["undertone_match"] = diagnosis.get("undertone", prelim_undertone)
 
     # Strict Human Face Verification:
     # Reject non-human subjects (monkeys, animals, objects)
@@ -282,25 +334,17 @@ async def analyze_skin(
         err_msg = diagnosis.get("error") or "Non-human subject detected. Stylic.AI clinical scanner is calibrated strictly for living human beings. Please upload or scan a clear human facial portrait."
         raise HTTPException(status_code=400, detail=err_msg)
 
+    # Check 1: Return explicit error on API failure - never a placeholder or default result
+    if diagnosis.get("success") is False or ("error" in diagnosis and diagnosis.get("is_human_face") is not False):
+        err_msg = diagnosis.get("error") or "Clinical skin analysis failed due to AI provider error or rate limits. Please retry."
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=err_msg)
+
     # 4. AI-driven product matching: use AI's recommended ingredients + detected issues
     matched_products = ProductService.match_products(
         detected_issues=diagnosis.get("issues", []),
         max_budget_inr=req.budget_skincare if (req.budget_skincare and req.budget_skincare > 0) else None,
         skin_type=diagnosis.get("skin_type", "Combination"),
         recommended_ingredients=diagnosis.get("recommended_ingredients", []),
-    )
-
-    # 5. Generate complete Head-to-Toe outfit (Hat to Shoes)
-    fashion_budget = req.budget_fashion if (req.budget_fashion and req.budget_fashion > 0) else None
-    color_palette = diagnosis.get("color_palette")
-    outfit_data = await FashionService.recommend_outfit(
-        occasion="Casual",
-        skin_undertone=diagnosis.get("undertone", "Neutral Warm"),
-        face_shape=diagnosis.get("face_shape", face_geometry.get("face_shape", "Oval")),
-        gender=user_context["gender"],
-        budget_inr=fashion_budget,
-        style_preference="Modern Minimalist",
-        color_palette=color_palette
     )
 
     # 6. Save record to Database

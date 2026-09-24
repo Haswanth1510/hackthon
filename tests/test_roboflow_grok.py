@@ -17,6 +17,7 @@ from backend.services.grok_service import GrokSkinService
 class TestRoboflowGrokIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ["ALLOW_MOCK_FALLBACK"] = "true"
         init_db()
         cls.client = TestClient(app)
         # 1x1 neutral grey dummy jpeg base64

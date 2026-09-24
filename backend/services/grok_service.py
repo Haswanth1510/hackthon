@@ -2,8 +2,10 @@ import os
 import json
 import base64
 import io
+import hashlib
 import httpx
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
+import asyncio
 import numpy as np
 from PIL import Image, ImageStat
 from dotenv import load_dotenv
@@ -14,8 +16,9 @@ GROK_API_KEY = os.getenv("GROK_API_KEY", "")
 GROK_API_URL = os.getenv("GROK_API_URL", "https://api.x.ai/v1/chat/completions")
 GROK_MODEL = os.getenv("GROK_MODEL", "qwen/qwen3.8-27b")
 
-# Backup AI Engine (Google Gemini Multimodal Flash Engine)
-GROK_BACKUP_API_KEY = os.getenv("GROK_BACKUP_API_KEY") or os.getenv("GEMINI_API_KEY", "")
+# Dedicated Skin Analysis Gemini Key (Independent from Fashion Key)
+GEMINI_API_KEY_SKIN = os.getenv("GEMINI_API_KEY_SKIN") or os.getenv("GEMINI_API_KEY") or os.getenv("GROK_BACKUP_API_KEY", "")
+GROK_BACKUP_API_KEY = GEMINI_API_KEY_SKIN
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 
 class GrokSkinService:
@@ -23,6 +26,48 @@ class GrokSkinService:
     Integrates with xAI Grok API and Groq Cloud LPU for clinical-level visual dermatological analysis.
     Provides intelligent local diagnostic fallback if key is not configured or in offline mode.
     """
+
+    @classmethod
+    def normalize_image_payload(cls, image_base64: str) -> Tuple[str, int, str]:
+        """
+        Normalizes any base64 image (PNG, WebP, JPEG, etc.) into clean RGB JPEG base64.
+        Returns: (clean_b64, size_bytes, sha256_hash)
+        """
+        clean_input = image_base64.split(",")[-1] if "," in image_base64 else image_base64
+        clean_input = clean_input.strip().replace("\n", "").replace("\r", "").replace(" ", "")
+        if len(clean_input) % 4 != 0:
+            clean_input += "=" * (4 - len(clean_input) % 4)
+
+        try:
+            raw_bytes = base64.b64decode(clean_input)
+            img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=85)
+            jpeg_bytes = buf.getvalue()
+            b64_str = base64.b64encode(jpeg_bytes).decode("ascii")
+            sha256_hash = hashlib.sha256(jpeg_bytes).hexdigest()
+            return b64_str, len(jpeg_bytes), sha256_hash
+        except Exception:
+            try:
+                raw_bytes = base64.b64decode(clean_input) if clean_input else b""
+                sha256_hash = hashlib.sha256(raw_bytes).hexdigest() if raw_bytes else "unknown"
+                return clean_input, len(raw_bytes), sha256_hash
+            except Exception:
+                raw_bytes = clean_input.encode("utf-8")
+                return clean_input, len(raw_bytes), hashlib.sha256(raw_bytes).hexdigest()
+
+    @classmethod
+    def _clean_json_text(cls, raw_text: str) -> str:
+        """Strips markdown code fences and returns pure JSON text."""
+        s = raw_text.strip()
+        if s.startswith("```"):
+            lines = s.splitlines()
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            s = "\n".join(lines).strip()
+        return s
 
     @classmethod
     def extract_computer_vision_telemetry(cls, clean_b64: str) -> Dict[str, Any]:
@@ -195,23 +240,30 @@ class GrokSkinService:
         Tier 3: Intelligent Rule-Based Engine (100% Offline Uptime)
         Returns detailed structured skin conditions, severity ratings, precautions, and personalized color palettes.
         """
-        # Tier 1: Primary Engine — Google Gemini Flash Multimodal (Native high-resolution vision, 1M context, no 429 OTPM limits)
-        gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GROK_BACKUP_API_KEY", GROK_BACKUP_API_KEY)
-        if gemini_key and gemini_key.strip():
+        # Check 2: Normalize image payload and log size/sha256 hash immediately before API calls
+        clean_b64, payload_size, payload_sha = cls.normalize_image_payload(image_base64)
+        print(f"[ImagePayload] Size: {payload_size} bytes, SHA256: {payload_sha[:12]}, format: JPEG")
+
+        # Tier 1: Primary Engine — Google Gemini Flash Multimodal (Dedicated GEMINI_API_KEY_SKIN)
+        gemini_skin_key = os.getenv("GEMINI_API_KEY_SKIN") or os.getenv("GEMINI_API_KEY") or os.getenv("GROK_BACKUP_API_KEY", GROK_BACKUP_API_KEY)
+        if gemini_skin_key and gemini_skin_key.strip():
+            key_preview = f"...{gemini_skin_key.strip()[-4:]}" if len(gemini_skin_key.strip()) >= 4 else "..."
+            print(f"[GeminiSkinAPI] Initiating clinical skin analysis with key ({key_preview})")
             try:
                 gemini_result = await cls._call_gemini_vision(
-                    image_base64=image_base64,
+                    image_base64=clean_b64,
                     landmarks=landmarks_telemetry,
                     user_context=user_context,
                     roboflow_detections=roboflow_detections,
-                    api_key=gemini_key.strip()
+                    api_key=gemini_skin_key.strip()
                 )
                 if gemini_result:
+                    print(f"[GeminiSkinAPI] Clinical skin analysis succeeded using key ({key_preview})")
                     return gemini_result
                 else:
-                    print("[AIService] Primary Gemini did not return a valid diagnosis. Engaging Groq secondary backup engine...")
+                    print(f"[GeminiSkinAPI] Gemini skin key ({key_preview}) failed after all retries. Engaging Groq backup engine...")
             except Exception as e:
-                print(f"[AIService] Primary Gemini API error: {e}. Seamlessly falling back to Groq secondary backup engine...")
+                print(f"[GeminiSkinAPI] Gemini skin call error on key ({key_preview}): {e}. Seamlessly falling back to Groq...")
 
         # Tier 2: Secondary Backup Engine — Groq / Grok Cloud (Engaged if Gemini fails)
         groq_key = os.getenv("GROK_API_KEY", GROK_API_KEY)
@@ -219,7 +271,7 @@ class GrokSkinService:
             try:
                 print("[AIService] Engaging Secondary Backup AI Engine (Groq / Grok Cloud)...")
                 groq_result = await cls._call_grok_vision(
-                    image_base64=image_base64,
+                    image_base64=clean_b64,
                     landmarks=landmarks_telemetry,
                     user_context=user_context,
                     roboflow_detections=roboflow_detections,
@@ -228,16 +280,28 @@ class GrokSkinService:
                 if groq_result:
                     return groq_result
             except Exception as e:
-                print(f"[AIService] Secondary Groq API error: {e}. Engaging intelligent local diagnostic engine...")
+                print(f"[AIService] Secondary Groq API error: {e}.")
 
-        # Tier 3: Deterministic intelligent diagnostic engine (100% offline uptime fallback)
-        print("[AIService] Engaging Tier 3 Local Intelligent Diagnostic Engine...")
-        return cls._generate_intelligent_diagnosis(
-            image_base64=image_base64,
-            landmarks=landmarks_telemetry,
-            user_context=user_context,
-            roboflow_detections=roboflow_detections
+        # Check 1 & Check 3: Check whether fallback is gated behind test flag
+        allow_mock = (
+            os.getenv("ALLOW_MOCK_FALLBACK", "").lower() in ("true", "1") or
+            os.getenv("TESTING", "").lower() in ("true", "1")
         )
+        if allow_mock:
+            print("[AIService] Gated test fallback engaged (ALLOW_MOCK_FALLBACK/TESTING)...")
+            return cls._generate_intelligent_diagnosis(
+                image_base64=clean_b64,
+                landmarks=landmarks_telemetry,
+                user_context=user_context,
+                roboflow_detections=roboflow_detections
+            )
+
+        # In production/live runtime: do NOT swallow errors or return fake placeholder results!
+        print("[AIService Error] All vision AI providers failed. Returning explicit error response to frontend.")
+        return {
+            "success": False,
+            "error": "Clinical skin analysis failed due to AI vision provider error or rate limits. Please retry in a few moments."
+        }
 
     @classmethod
     async def _call_grok_vision(
@@ -314,108 +378,80 @@ DIAGNOSTIC INSTRUCTIONS:
     "is_human_face": false,
     "error": "Non-human subject detected. Stylic.AI clinical scanner is calibrated strictly for human facial analysis. Please scan or upload a clear, genuine human facial portrait."
   }}
-- If and ONLY if a genuine living human face is verified, proceed with full dermatological evaluation, setting "is_human_face": true:
-- Visually inspect the face image in detail, cross-referencing and confirming the localized lesions detected by Roboflow.
-- Evaluate the overall skin barrier health, pore texture, erythema/redness, hyperpigmentation marks, and periorbital circles.
-- Synthesize all findings into an integrated clinical diagnosis and calibrated overall_score (integer between 40 and 95).
-- CRITICAL LANGUAGE REQUIREMENT: All text (summary, issue_type, descriptions, precautions, routines, ingredients) must be written strictly in clear, professional English language only. Do NOT use non-English or Latin phrases.
-- Return ONLY valid JSON matching this exact structure:
+
+- INDIVIDUALIZED CLINICAL EVALUATION ("is_human_face": true):
+  1. Score & Barrier Health:
+     - Formulate a precise overall_score (integer between 40 and 95) based on the specific patient's visible redness, pore texture, skin barrier, and active lesions. Do NOT default to any fixed score.
+     - Determine skin_type: "Dry", "Oily", "Combination", "Normal", or "Sensitive".
+  2. Chromatic Color Palette Analysis:
+     - Assess their true individual undertone: "Cool Rosy", "Warm Golden", "Warm Peach", "Neutral Olive", "Cool Neutral", etc.
+     - Determine facial contrast level: "High Contrast", "Medium Contrast", or "Soft / Low Contrast".
+     - Determine 12-season typology: e.g. "Deep Winter", "Cool Winter", "Clear Winter", "Cool Summer", "Soft Summer", "Light Summer", "Deep Autumn", "Warm Autumn", "Soft Autumn", "Warm Spring", "Light Spring", "Bright Spring".
+     - Provide 4-6 distinct clothing colors ("best_colors") with exact descriptive names, valid HEX codes (#RRGGBB), and specific rationale tailored to this person's melanin depth and iris contrast.
+     - Provide 3 clashing clothing colors to avoid ("colors_to_avoid") with HEX codes and reasons.
+  3. Regimen & Precautions:
+     - AM and PM skincare routine tailored to their specific skin type and observed concerns.
+     - Clear precautions and targeted recommended active ingredients.
+  4. LANGUAGE REQUIREMENT:
+     - All text fields must be strictly written in clear, professional English only.
+
+Return ONLY valid JSON matching this structure:
 {{
   "is_human_face": true,
-  "overall_score": 82,
+  "overall_score": 85,
   "skin_type": "Combination",
-  "undertone": "Warm",
+  "undertone": "Neutral Warm",
   "age_estimate": {ctx_age},
-  "summary": "Clinical summary incorporating MediaPipe geometry, Roboflow lesion localization, and visual findings in clear English.",
+  "summary": "Clinical summary incorporating MediaPipe geometry, Roboflow lesion localization, visual skin barrier findings, and chromatic profile in clear English.",
   "issues": [
     {{
-      "issue_type": "Acne & Micro-Congestion",
+      "issue_type": "Primary Skin Concern",
       "severity": "mild",
       "score": 42,
-      "zone": "Cheeks and Jawline",
-      "description": "Mild micro-comedones and post-acne erythema confirmed visually and via Roboflow detections.",
-      "precautions": ["Avoid picking or physical abrasive scrubs", "Use non-comedogenic sunscreen daily"]
+      "zone": "Anatomical Face Zone",
+      "description": "Specific observation on patient's skin.",
+      "precautions": ["Precaution 1", "Precaution 2"]
     }}
   ],
   "am_routine": [
-    "Gentle foaming cleanser with 1% Salicylic Acid",
-    "Niacinamide 5% serum to regulate sebum and calm inflammation",
-    "Oil-free barrier gel moisturizer with ceramides",
-    "Broad spectrum SPF 50+ PA++++ sunscreen"
+    "Morning cleanse step",
+    "Targeted active serum",
+    "Barrier moisturizer",
+    "Broad spectrum SPF 50+ sunscreen"
   ],
   "pm_routine": [
-    "Double cleanse with micellar water followed by gentle cleanser",
-    "Encapsulated Retinol 0.2% or Azelaic Acid 10% (alternate nights)",
-    "Soothing peptide & ceramide repair cream"
+    "Double cleanse to remove daily impurities",
+    "Targeted overnight treatment",
+    "Barrier repair cream"
   ],
   "precautions": [
-    "Patch test active acids 24 hours before full-face application",
-    "Discontinue retinol if peeling occurs; focus on barrier hydration",
-    "Maintain high UV protection to prevent hyperpigmentation darkening"
+    "Precaution 1",
+    "Precaution 2",
+    "Precaution 3"
   ],
-  "recommended_ingredients": ["Salicylic Acid", "Niacinamide", "Centella Asiatica", "Ceramides", "Hyaluronic Acid"],
+  "recommended_ingredients": ["Ingredient 1", "Ingredient 2", "Ingredient 3"],
   "color_palette": {{
-    "season": "Warm Autumn",
-    "undertone": "Warm Golden",
-    "contrast_level": "Medium Contrast",
+    "season": "Seasonal Typology",
+    "undertone": "Patient Undertone",
+    "contrast_level": "Contrast Level",
     "best_colors": [
       {{
-        "name": "Terracotta Rust",
-        "hex": "#C85A32",
+        "name": "Specific Color Name",
+        "hex": "#4A6B82",
         "family": "Primary Harmony",
-        "advice": "Enhances natural facial warmth and flatters cheek tone without reflecting redness."
-      }},
-      {{
-        "name": "Forest Olive",
-        "hex": "#3B4E38",
-        "family": "Core Earth Tone",
-        "advice": "Balances facial erythema and provides an earthy, sophisticated harmony."
-      }},
-      {{
-        "name": "Warm Camel Tan",
-        "hex": "#C19A6B",
-        "family": "Base Neutral",
-        "advice": "A foundational wardrobe staple that flatters warm golden melanin effortlessly."
-      }},
-      {{
-        "name": "Deep Petrol Teal",
-        "hex": "#1B4D5A",
-        "family": "Contrasting Jewel",
-        "advice": "A jewel tone with warm undertones that elevates evening silhouettes."
-      }},
-      {{
-        "name": "Warm Ochre",
-        "hex": "#D4A017",
-        "family": "Sunlit Pop",
-        "advice": "Accentuates skin luminosity and eye depth without overpowering."
-      }},
-      {{
-        "name": "Espresso Brown",
-        "hex": "#3E2723",
-        "family": "Anchor Dark",
-        "advice": "A gentle, luxurious alternative to harsh black that softens facial features."
+        "advice": "Why this shade enhances this person's skin"
       }}
     ],
     "colors_to_avoid": [
       {{
-        "name": "Icy Stark White",
-        "hex": "#F5FAFA",
-        "why": "Drains skin vitality and creates an unflattering chalky contrast."
-      }},
-      {{
-        "name": "Neon Acid Lime",
-        "hex": "#BFFF00",
-        "why": "Casts a sallow, sickly reflection across the jawline and under-eyes."
-      }},
-      {{
-        "name": "Cool Icy Lilac",
-        "hex": "#DCD0FF",
-        "why": "Clashes with warm golden undertones, exaggerating tiredness."
+        "name": "Clashing Color Name",
+        "hex": "#E0E0E0",
+        "why": "Why this shade clashes with this person's undertone"
       }}
     ],
-    "style_rationale": "Calibrated to your warm golden undertones and medium facial contrast. Rich earth pigments and deep jewel tones reflect flattering, warm ambient light onto your skin.",
-    "wardrobe_guidance": "Wear primary warm earth tones closest to your collarbone and face. Opt for soft ivory over stark bleached white shirts.",
-    "jewelry_metal_harmony": "Warm Yellow Gold (18k), Antique Brass, and Rose Gold provide superior chromatic harmony over cool chrome."
+    "style_rationale": "Style rationale calibrated to individual undertones and contrast.",
+    "wardrobe_guidance": "Wardrobe guidance for tops, jackets, and accessories.",
+    "jewelry_metal_harmony": "Metals that harmonize with their undertone."
   }}
 }}
 """
@@ -537,7 +573,9 @@ Return ONLY valid JSON with keys:
             if resp.status_code == 200:
                 data = resp.json()
                 content = data["choices"][0]["message"]["content"]
-                parsed = json.loads(content)
+                print(f"[GrokAPI Raw Response ({len(content)} chars)]: {content[:200]}...")
+                clean_json = cls._clean_json_text(content)
+                parsed = json.loads(clean_json)
                 return cls._sanitize_to_standard_english(parsed)
             else:
                 print(f"[GrokAPI Response Error]: {resp.status_code} - {resp.text}")
@@ -557,8 +595,9 @@ Return ONLY valid JSON with keys:
         Performs thorough clinical skin condition evaluation and chromatic color palette analysis.
         """
         clean_b64 = image_base64.split(",")[-1] if "," in image_base64 else image_base64
-        active_key = api_key or os.getenv("GROK_BACKUP_API_KEY") or os.getenv("GEMINI_API_KEY", "")
+        active_key = api_key or os.getenv("GEMINI_API_KEY_SKIN") or os.getenv("GEMINI_API_KEY") or os.getenv("GROK_BACKUP_API_KEY", "")
         if not active_key:
+            print("[GeminiSkinAPI Error] No skin API key configured (GEMINI_API_KEY_SKIN / GEMINI_API_KEY missing).")
             return None
 
         # 1. Roboflow Lesion Detection Telemetry
@@ -626,118 +665,88 @@ DIAGNOSTIC INSTRUCTIONS:
     "error": "Non-human subject detected. Stylic.AI clinical scanner is calibrated strictly for human facial analysis. Please scan or upload a clear, genuine human facial portrait."
   }}
 
-- If and ONLY if a genuine living human face is verified, proceed with full dermatological and chromatic color evaluation ("is_human_face": true):
-  1. Clinical Skin Evaluation:
-     - Cross-reference Roboflow lesion detections and computer-vision pixel telemetry.
-     - Evaluate barrier health, sebum glossiness, erythema, hyperpigmentation marks, and periorbital circles.
-     - Dynamic overall_score (integer between 40 and 95 calibrated to actual conditions).
-  2. Chromatic Skin Color Palette Analysis (Which color palettes are best suited for their skin):
-     - Analyze the human subject's skin phototype, melanin depth, and undertones (Warm Golden/Peach, Cool Rosy/Pink, or Neutral Olive).
-     - Assess their facial contrast ratio between skin, eyebrows, and iris.
-     - Classify their seasonal color typology (e.g., Warm Autumn, Soft Autumn, Deep Autumn, Cool Summer, Soft Summer, Light Summer, Deep Winter, Clear Winter, Warm Spring, Bright Spring).
-     - Curate exact flattering clothing shades ("best_colors") and clashing shades ("colors_to_avoid") with valid HEX codes, color names, and specific styling advice.
-  3. CRITICAL LANGUAGE REQUIREMENT:
-     - All text fields must be strictly written in clear, professional English language only. Do NOT use non-English, Latin, or corrupted characters.
+- INDIVIDUALIZED CLINICAL EVALUATION ("is_human_face": true):
+  1. Score & Barrier Health:
+     - Calibrate overall_score dynamically based on the Calibrated Telemetry Baseline Score ({telemetry['dynamic_score']}/100) and visible facial condition.
+     - The overall_score MUST be an integer between 40 and 95 uniquely reflecting THIS patient (e.g., 58, 64, 73, 86, 91).
+     - Do NOT output 78, 82, or any fixed default score for all users.
+     - Determine skin_type: "Dry", "Oily", "Combination", "Normal", or "Sensitive" based on visible sebum sheen and texture.
+  2. Chromatic Color Palette Analysis (DIVERSE 12-SEASON MATCHING):
+     - Analyze the patient's individual melanin depth, facial undertones, hair color, and iris contrast.
+     - You MUST classify the patient into their true seasonal typology among all 12 seasons:
+       * Cool Summer / Soft Summer / Light Summer (cool/ash undertones: Pastel Blues, Lavender, Soft Rose, Slate)
+       * Deep Winter / Clear Winter / Cool Winter (high contrast / cool: Royal Cobalt Blue, Crisp White, Emerald, Vivid Ruby)
+       * Deep Autumn / Warm Autumn / Soft Autumn (warm/earthy: Rust, Forest Olive, Ochre, Camel, Espresso)
+       * Warm Spring / Light Spring / Bright Spring (clear warm: Peach, Coral, Goldenrod, Aqua)
+     - NEVER classify all patients as "Warm Autumn". Each patient must have a distinct color palette tailored to their individual phototype.
+     - Provide 4-6 distinct clothing colors ("best_colors") with descriptive names, valid HEX codes (#RRGGBB), and styling advice.
+     - Provide 3 clashing clothing colors to avoid ("colors_to_avoid") with HEX codes and why.
+  3. Regimen & Precautions:
+     - AM and PM skincare routine tailored to their specific skin type and observed concerns.
+     - Clear precautions and targeted recommended active ingredients.
+  4. LANGUAGE REQUIREMENT:
+     - All text fields must be strictly written in clear, professional English only.
 
-Return ONLY valid JSON matching this exact structure:
+Return ONLY valid JSON matching this structure:
 {{
   "is_human_face": true,
-  "overall_score": 82,
-  "skin_type": "Combination",
-  "undertone": "Warm Golden",
+  "overall_score": {telemetry['dynamic_score']},
+  "skin_type": "Skin Type",
+  "undertone": "Accurate Undertone",
   "age_estimate": {ctx_age},
   "summary": "Clinical summary incorporating MediaPipe geometry, Roboflow lesion localization, visual skin barrier findings, and chromatic profile in clear English.",
   "issues": [
     {{
-      "issue_type": "Acne & Micro-Congestion",
+      "issue_type": "Primary Skin Concern",
       "severity": "mild",
       "score": 42,
-      "zone": "Cheeks and Jawline",
-      "description": "Mild micro-comedones and post-acne erythema confirmed visually and via Roboflow detections.",
-      "precautions": ["Avoid picking or physical abrasive scrubs", "Use non-comedogenic sunscreen daily"]
+      "zone": "Anatomical Face Zone",
+      "description": "Specific observation on patient's skin.",
+      "precautions": ["Precaution 1", "Precaution 2"]
     }}
   ],
   "am_routine": [
-    "Gentle foaming cleanser with 1% Salicylic Acid",
-    "Niacinamide 5% serum to regulate sebum and calm inflammation",
-    "Oil-free barrier gel moisturizer with ceramides",
-    "Broad spectrum SPF 50+ PA++++ sunscreen"
+    "Morning cleanse step",
+    "Targeted active serum",
+    "Barrier moisturizer",
+    "Broad spectrum SPF 50+ sunscreen"
   ],
   "pm_routine": [
-    "Double cleanse with micellar water followed by gentle cleanser",
-    "Encapsulated Retinol 0.2% or Azelaic Acid 10% (alternate nights)",
-    "Soothing peptide & ceramide repair cream"
+    "Double cleanse to remove daily impurities",
+    "Targeted overnight treatment",
+    "Barrier repair cream"
   ],
   "precautions": [
-    "Patch test active acids 24 hours before full-face application",
-    "Discontinue retinol if peeling occurs; focus on barrier hydration",
-    "Maintain high UV protection to prevent hyperpigmentation darkening"
+    "Precaution 1",
+    "Precaution 2",
+    "Precaution 3"
   ],
-  "recommended_ingredients": ["Salicylic Acid", "Niacinamide", "Centella Asiatica", "Ceramides", "Hyaluronic Acid"],
+  "recommended_ingredients": ["Ingredient 1", "Ingredient 2", "Ingredient 3"],
   "color_palette": {{
-    "season": "Warm Autumn",
-    "undertone": "Warm Golden",
-    "contrast_level": "Medium Contrast",
+    "season": "Seasonal Typology",
+    "undertone": "Patient Undertone",
+    "contrast_level": "Contrast Level",
     "best_colors": [
       {{
-        "name": "Terracotta Rust",
-        "hex": "#C85A32",
+        "name": "Specific Flattering Color",
+        "hex": "#4A6B82",
         "family": "Primary Harmony",
-        "advice": "Enhances natural facial warmth and flatters cheek tone without reflecting redness."
-      }},
-      {{
-        "name": "Forest Olive",
-        "hex": "#3B4E38",
-        "family": "Core Earth Tone",
-        "advice": "Balances facial erythema and provides an earthy, sophisticated harmony."
-      }},
-      {{
-        "name": "Warm Camel Tan",
-        "hex": "#C19A6B",
-        "family": "Base Neutral",
-        "advice": "A foundational wardrobe staple that flatters warm golden melanin effortlessly."
-      }},
-      {{
-        "name": "Deep Petrol Teal",
-        "hex": "#1B4D5A",
-        "family": "Contrasting Jewel",
-        "advice": "A jewel tone with warm undertones that elevates evening silhouettes."
-      }},
-      {{
-        "name": "Warm Ochre",
-        "hex": "#D4A017",
-        "family": "Sunlit Pop",
-        "advice": "Accentuates skin luminosity and eye depth without overpowering."
-      }},
-      {{
-        "name": "Espresso Brown",
-        "hex": "#3E2723",
-        "family": "Anchor Dark",
-        "advice": "A gentle, luxurious alternative to harsh black that softens facial features."
+        "advice": "Why this shade enhances this person's skin"
       }}
     ],
     "colors_to_avoid": [
       {{
-        "name": "Icy Stark White",
-        "hex": "#F5FAFA",
-        "why": "Drains skin vitality and creates an unflattering chalky contrast."
-      }},
-      {{
-        "name": "Neon Acid Lime",
-        "hex": "#BFFF00",
-        "why": "Casts a sallow, sickly reflection across the jawline and under-eyes."
-      }},
-      {{
-        "name": "Cool Icy Lilac",
-        "hex": "#DCD0FF",
-        "why": "Clashes with warm golden undertones, exaggerating tiredness."
+        "name": "Clashing Color Name",
+        "hex": "#E0E0E0",
+        "why": "Why this shade clashes with this person's undertone"
       }}
     ],
-    "style_rationale": "Calibrated to your warm golden undertones and medium facial contrast. Rich earth pigments and deep jewel tones reflect flattering, warm ambient light onto your skin.",
-    "wardrobe_guidance": "Wear primary warm earth tones closest to your collarbone and face. Opt for soft ivory over stark bleached white shirts.",
-    "jewelry_metal_harmony": "Warm Yellow Gold (18k), Antique Brass, and Rose Gold provide superior chromatic harmony over cool chrome."
+    "style_rationale": "Style rationale calibrated to individual undertones and contrast.",
+    "wardrobe_guidance": "Wardrobe guidance for tops, jackets, and accessories.",
+    "jewelry_metal_harmony": "Metals that harmonize with their undertone."
   }}
-}}"""
+}}
+"""
 
         models_to_try = ["gemini-flash-lite-latest", "gemini-flash-latest"]
         payload = {
@@ -751,27 +760,47 @@ Return ONLY valid JSON matching this exact structure:
             ],
             "generationConfig": {
                 "responseMimeType": "application/json",
-                "temperature": 0.2
+                "temperature": 0.4
             }
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        masked_key = f"...{active_key[-4:]}" if len(active_key) >= 4 else "..."
+        max_retries = 3
+        base_delay = 1.0
+
+        async with httpx.AsyncClient(timeout=35.0) as client:
             for model_name in models_to_try:
-                try:
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={active_key}"
-                    resp = await client.post(url, json=payload)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        candidates = data.get("candidates", [])
-                        if candidates and "content" in candidates[0]:
-                            parts = candidates[0]["content"].get("parts", [])
-                            if parts and "text" in parts[0]:
-                                parsed = json.loads(parts[0]["text"])
-                                return cls._sanitize_to_standard_english(parsed)
-                    else:
-                        print(f"[GeminiBackup] Model {model_name} returned HTTP {resp.status_code}: {resp.text[:150]}")
-                except Exception as e:
-                    print(f"[GeminiBackup] Exception with model {model_name}: {e}")
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={active_key}"
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            candidates = data.get("candidates", [])
+                            if candidates and "content" in candidates[0]:
+                                parts = candidates[0]["content"].get("parts", [])
+                                if parts and "text" in parts[0]:
+                                    raw_text = parts[0]["text"]
+                                    print(f"[GeminiSkinAPI Raw Response ({len(raw_text)} chars)]: {raw_text[:200]}...")
+                                    clean_json = cls._clean_json_text(raw_text)
+                                    parsed = json.loads(clean_json)
+                                    return cls._sanitize_to_standard_english(parsed)
+                        elif resp.status_code == 429:
+                            delay = base_delay * (2 ** (attempt - 1))
+                            print(f"[GeminiSkinAPI] Rate limit (HTTP 429) on skin key ({masked_key}) with model {model_name}. Attempt {attempt}/{max_retries}. Backing off {delay:.1f}s before retry...")
+                            if attempt < max_retries:
+                                await asyncio.sleep(delay)
+                                continue
+                            else:
+                                print(f"[GeminiSkinAPI] Exhausted retries for model {model_name} due to rate limiting on key ({masked_key}).")
+                        else:
+                            print(f"[GeminiSkinAPI] Key ({masked_key}) with model {model_name} returned HTTP {resp.status_code}: {resp.text[:150]}")
+                            break
+                    except Exception as e:
+                        delay = base_delay * (2 ** (attempt - 1))
+                        print(f"[GeminiSkinAPI] Exception on skin key ({masked_key}) with model {model_name} (Attempt {attempt}/{max_retries}): {e}")
+                        if attempt < max_retries:
+                            await asyncio.sleep(delay)
         return None
 
     @classmethod

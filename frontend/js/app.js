@@ -1590,16 +1590,20 @@ const App = {
       });
     });
 
-    const loginForm = document.getElementById("formLogin");
+    const loginForm = document.getElementById("formModalLogin") || document.getElementById("formLogin");
     if (loginForm) {
       loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const email = document.getElementById("loginEmail").value;
-        const password = document.getElementById("loginPassword").value;
+        const emailInput = document.getElementById("modalLoginEmail") || document.getElementById("loginEmail");
+        const passwordInput = document.getElementById("modalLoginPassword") || document.getElementById("loginPassword");
+        const email = emailInput ? emailInput.value.trim() : "";
+        const password = passwordInput ? passwordInput.value : "";
         try {
           const res = await API.login(email, password);
           this.state.currentUser = res.user;
           this.updateUserUI(res.user);
+          localStorage.setItem("Stylic.AI_has_account", "true");
+          this.unlockApp();
           this.closeModal("loginModal");
           this.showToast(`Welcome back, ${res.user.full_name}!`, "success");
         } catch (err) {
@@ -1608,13 +1612,17 @@ const App = {
       });
     }
 
-    const regForm = document.getElementById("formRegister");
+    const regForm = document.getElementById("formModalRegister") || document.getElementById("formRegister");
     if (regForm) {
       regForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const fullName = document.getElementById("regFullName").value.trim();
-        const email = document.getElementById("regEmail").value.trim();
-        const password = document.getElementById("regPassword").value;
+        const nameInput = document.getElementById("modalRegFullName") || document.getElementById("regFullName");
+        const emailInput = document.getElementById("modalRegEmail") || document.getElementById("regEmail");
+        const passwordInput = document.getElementById("modalRegPassword") || document.getElementById("regPassword");
+
+        const fullName = nameInput ? nameInput.value.trim() : "";
+        const email = emailInput ? emailInput.value.trim() : "";
+        const password = passwordInput ? passwordInput.value : "";
 
         try {
           const res = await API.register({
@@ -1625,6 +1633,8 @@ const App = {
 
           this.state.currentUser = res.user;
           this.updateUserUI(res.user);
+          localStorage.setItem("Stylic.AI_has_account", "true");
+          this.unlockApp();
           this.closeModal("registerModal");
           this.showToast(`Account created! Welcome, ${fullName}.`, "success");
           

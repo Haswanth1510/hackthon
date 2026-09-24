@@ -15,6 +15,7 @@ from backend.services.grok_service import GrokSkinService
 class TestSkincareFashionAI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ["ALLOW_MOCK_FALLBACK"] = "true"
         init_db()
         with get_db() as conn:
             cursor = conn.cursor()
