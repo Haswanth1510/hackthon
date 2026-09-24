@@ -658,7 +658,8 @@ const App = {
     }
   },
 
-  async executeScan() {
+  async executeScan(options = {}) {
+    const isRetry = Boolean(options && options.isRetry);
     const viewport = document.querySelector(".camera-card");
     const scanBtn = document.getElementById("btnTriggerScan") || document.getElementById("btnAnalyze");
     const notesInput = document.getElementById("userNotesInput") || document.getElementById("scanContext");
@@ -672,58 +673,60 @@ const App = {
     const hasUploadedImage = Boolean(this.state.capturedImageBase64 && !this.state.cameraSnapshotUsed);
     const hasLiveFace = Boolean(this.state.camera && this.state.camera.hasFaceVisible());
 
-    if (hasUploadedImage && !this.state.uploadedImageHasHumanFace) {
-      this.showToast("Non-Human Subject Detected: The scanner is calibrated strictly for living human beings. Please upload a clear human facial portrait.", "danger");
-      
-      const banner = document.getElementById("scannerFaceAlert") || document.getElementById("faceAlert");
-      const bannerText = document.getElementById("faceAlertText");
-      if (bannerText) {
-        bannerText.textContent = "Non-Human Image: The scanner is calibrated strictly for living human beings.";
-      }
-      if (banner) {
-        banner.classList.remove("hidden");
-        banner.classList.add("shake-alert");
-        setTimeout(() => banner.classList.remove("shake-alert"), 800);
+    if (!isRetry) {
+      if (hasUploadedImage && !this.state.uploadedImageHasHumanFace) {
+        this.showToast("Non-Human Subject Detected: The scanner is calibrated strictly for living human beings. Please upload a clear human facial portrait.", "danger");
+        
+        const banner = document.getElementById("scannerFaceAlert") || document.getElementById("faceAlert");
+        const bannerText = document.getElementById("faceAlertText");
+        if (bannerText) {
+          bannerText.textContent = "Non-Human Image: The scanner is calibrated strictly for living human beings.";
+        }
+        if (banner) {
+          banner.classList.remove("hidden");
+          banner.classList.add("shake-alert");
+          setTimeout(() => banner.classList.remove("shake-alert"), 800);
+        }
+
+        if (viewport) {
+          viewport.style.borderColor = "var(--error, #ef4444)";
+          viewport.style.boxShadow = "0 0 30px rgba(239, 68, 68, 0.4)";
+          setTimeout(() => {
+            viewport.style.borderColor = "";
+            viewport.style.boxShadow = "";
+          }, 3000);
+        }
+        return; // Stop immediately - do not generate AI results for non-human images
       }
 
-      if (viewport) {
-        viewport.style.borderColor = "var(--error, #ef4444)";
-        viewport.style.boxShadow = "0 0 30px rgba(239, 68, 68, 0.4)";
-        setTimeout(() => {
-          viewport.style.borderColor = "";
-          viewport.style.boxShadow = "";
-        }, 3000);
-      }
-      return; // Stop immediately - do not generate AI results for non-human images
-    }
+      if (!hasUploadedImage && !hasLiveFace) {
+        this.showToast("Face Not Detected: Please look directly at the camera or upload a clear facial portrait.", "danger");
+        
+        const banner = document.getElementById("scannerFaceAlert") || document.getElementById("faceAlert");
+        const bannerText = document.getElementById("faceAlertText");
+        if (bannerText) {
+          bannerText.textContent = "No human face detected — center your face";
+        }
+        if (banner) {
+          banner.classList.remove("hidden");
+          banner.classList.add("shake-alert");
+          setTimeout(() => banner.classList.remove("shake-alert"), 800);
+        }
 
-    if (!hasUploadedImage && !hasLiveFace) {
-      this.showToast("Face Not Detected: Please look directly at the camera or upload a clear facial portrait.", "danger");
-      
-      const banner = document.getElementById("scannerFaceAlert") || document.getElementById("faceAlert");
-      const bannerText = document.getElementById("faceAlertText");
-      if (bannerText) {
-        bannerText.textContent = "No human face detected — center your face";
+        if (viewport) {
+          viewport.style.borderColor = "var(--error)";
+          viewport.style.boxShadow = "0 0 30px rgba(186, 26, 26, 0.4)";
+          setTimeout(() => {
+            viewport.style.borderColor = "";
+            viewport.style.boxShadow = "";
+          }, 3000);
+        }
+        return; // Stop immediately - do not generate AI results without a visible user
       }
-      if (banner) {
-        banner.classList.remove("hidden");
-        banner.classList.add("shake-alert");
-        setTimeout(() => banner.classList.remove("shake-alert"), 800);
-      }
-
-      if (viewport) {
-        viewport.style.borderColor = "var(--error)";
-        viewport.style.boxShadow = "0 0 30px rgba(186, 26, 26, 0.4)";
-        setTimeout(() => {
-          viewport.style.borderColor = "";
-          viewport.style.boxShadow = "";
-        }, 3000);
-      }
-      return; // Stop immediately - do not generate AI results without a visible user
     }
 
     let imageB64 = this.state.capturedImageBase64;
-    if (!hasUploadedImage && this.state.camera) {
+    if (!isRetry && !hasUploadedImage && this.state.camera) {
       imageB64 = this.state.camera.captureSnapshot();
       this.state.capturedImageBase64 = imageB64;
       this.state.cameraSnapshotUsed = true;
@@ -779,7 +782,13 @@ const App = {
 
       this.showToast("Analyzing portrait with clinical AI models...", "info");
 
-      const landmarks = this.state.camera ? this.state.camera.currentLandmarks : null;
+      let landmarks = this.state.camera ? this.state.camera.currentLandmarks : null;
+      if (landmarks && landmarks.length > 0) {
+        this.state.lastScanLandmarks = landmarks;
+      } else if (this.state.lastScanLandmarks) {
+        landmarks = this.state.lastScanLandmarks;
+      }
+
       const notes = notesInput ? notesInput.value.trim() : "";
       const fashionBudget = this.state.hasFashionBudget ? this.state.fashionBudget : 3500;
 
@@ -794,9 +803,13 @@ const App = {
       this.state.currentScan = res;
       this.state.currentOutfit = res.outfit;
 
-      // Render the complete unified report once models complete
+      // Render the report (handles both partial and complete modes)
       this.renderUnifiedReport(res);
-      this.showToast("Clinical analysis & AI report ready!", "success");
+      if (res.analysis_status === "partial") {
+        this.showToast("Showing detected regions — full clinical scoring available on retry.", "warning");
+      } else {
+        this.showToast("Clinical analysis & AI report ready!", "success");
+      }
     } catch (err) {
       console.error("Scan analysis error:", err);
       const loadingState = document.getElementById("reportLoadingState");
@@ -818,6 +831,28 @@ const App = {
     }
   },
 
+  async retryFullAnalysis() {
+    if (!this.state.capturedImageBase64) {
+      this.showToast("No active scan capture found. Please return to scanner.", "warning");
+      this.switchView("view-scanner");
+      return;
+    }
+    const btn = document.getElementById("btnPartialRetry");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="material-symbols-outlined spin-icon" style="font-size: 14px; animation: spin 1s linear infinite;">sync</span> Retrying Analysis...`;
+    }
+    this.showToast("Retrying full clinical AI analysis...", "info");
+    try {
+      await this.executeScan({ isRetry: true });
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 15px;">refresh</span> <span>Retry Full Analysis</span>`;
+      }
+    }
+  },
+
   // Renders the single unified report according to requirements
   renderUnifiedReport(data) {
     const loadingState = document.getElementById("reportLoadingState");
@@ -828,6 +863,8 @@ const App = {
     if (emptyState) emptyState.style.display = "none";
     if (contentWrapper) contentWrapper.style.display = "block";
 
+    const isPartial = data.analysis_status === "partial";
+
     // 1. Photo that was captured
     const photoImg = document.getElementById("capturedPhotoPreview");
     if (photoImg) {
@@ -836,19 +873,71 @@ const App = {
 
     this.stopReportSpeech();
 
-    // 2. Short & Clear Analysis: Badges & Summary in Pure English
+    // 2. Inline Notice Banner for Partial Results
+    const partialBanner = document.getElementById("partialNoticeBanner");
+    const partialNoticeText = document.getElementById("partialNoticeText");
+    if (partialBanner) {
+      if (isPartial) {
+        partialBanner.style.display = "block";
+        if (partialNoticeText) {
+          partialNoticeText.textContent = data.message || "Full clinical scoring is temporarily unavailable due to AI provider demand. Showing detected skin regions and facial geometry from computer vision — full scoring will be available on retry.";
+        }
+      } else {
+        partialBanner.style.display = "none";
+      }
+    }
+
+    // 3. Short & Clear Analysis: Badges & Summary in Pure English
     const summaryText = document.getElementById("diagSummary");
-    if (summaryText) summaryText.textContent = data.summary;
+    if (summaryText) {
+      summaryText.textContent = isPartial
+        ? (data.message || "Full clinical scoring is temporarily unavailable due to AI provider demand. Showing detected skin regions and facial geometry from computer vision — full scoring will be available on retry.")
+        : (data.summary || "Comprehensive clinical analysis synthesized from 3D biometric geometry, lesion detection, and dermatological intelligence.");
+    }
+
     const badgeType = document.getElementById("badgeSkinType");
     const badgeTone = document.getElementById("badgeUndertone");
     const badgeShape = document.getElementById("badgeFaceShape");
     const badgeAge = document.getElementById("badgeAgeEstimate");
     const badgeRoboflow = document.getElementById("badgeRoboflow");
 
-    if (badgeType) badgeType.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">biotech</span> Skin Type: ${data.skin_type}`;
-    if (badgeTone) badgeTone.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">palette</span> Undertone: ${data.undertone}`;
-    if (badgeShape) badgeShape.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">face</span> Face Shape: ${data.face_shape}`;
-    if (badgeAge) badgeAge.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">schedule</span> Estimated Age: ~${data.age_estimate}`;
+    // Strictly omit AI-derived fields in partial mode - never show fabricated or placeholder values
+    if (badgeType) {
+      if (isPartial || !data.skin_type) {
+        badgeType.style.display = "none";
+      } else {
+        badgeType.style.display = "inline-block";
+        badgeType.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">biotech</span> Skin Type: ${data.skin_type}`;
+      }
+    }
+
+    if (badgeTone) {
+      if (isPartial || !data.undertone) {
+        badgeTone.style.display = "none";
+      } else {
+        badgeTone.style.display = "inline-block";
+        badgeTone.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">palette</span> Undertone: ${data.undertone}`;
+      }
+    }
+
+    if (badgeShape) {
+      if (data.face_shape) {
+        badgeShape.style.display = "inline-block";
+        badgeShape.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">face</span> Face Shape: ${data.face_shape}`;
+      } else {
+        badgeShape.style.display = "none";
+      }
+    }
+
+    if (badgeAge) {
+      if (isPartial || data.age_estimate == null) {
+        badgeAge.style.display = "none";
+      } else {
+        badgeAge.style.display = "inline-block";
+        badgeAge.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px; vertical-align: middle; margin-right: 3px;">schedule</span> Estimated Age: ~${data.age_estimate}`;
+      }
+    }
+
     if (badgeRoboflow) {
       const rfList = data.roboflow_detections || [];
       badgeRoboflow.style.display = "inline-block";
@@ -859,46 +948,72 @@ const App = {
       }
     }
 
+    // Hide clinical narrator audio in partial mode
+    const narratorBar = document.querySelector(".narrator-control-bar");
+    if (narratorBar) {
+      narratorBar.style.display = isPartial ? "none" : "flex";
+    }
+
     // Draw Roboflow bounding box overlays on scanned portrait
     this.drawRoboflowDetections(data.roboflow_detections || []);
 
-    // Detailed issues cards with individual clinical precautions
+    // Detailed issues cards (Roboflow detections or full diagnosis)
     const shortIssuesGrid = document.getElementById("shortIssuesGrid");
     if (shortIssuesGrid) {
-      shortIssuesGrid.innerHTML = (data.issues || []).map(issue => {
-        const badgeClass = issue.severity === "severe" 
-          ? "badge-danger" 
-          : (issue.severity === "moderate" ? "badge-warning" : "badge-info");
-
-        const precautionsHtml = (issue.precautions && issue.precautions.length > 0)
-          ? `
-            <div class="issue-precautions-box">
-              <span class="precaution-title">Clinical Precautions & Care:</span>
-              <ul class="precaution-bullets">
-                ${issue.precautions.map(p => `<li>${p}</li>`).join("")}
-              </ul>
-            </div>
-          ` : "";
-
-        return `
-          <div style="background: var(--surface-container-lowest); border: 1px solid var(--surface-container-high); border-radius: var(--radius-md); padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: var(--shadow-sm);">
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
-                <strong style="font-size: 0.95rem; color: var(--on-surface); font-family: var(--font-display);">${issue.issue_type}</strong>
-                <span class="badge ${badgeClass}" style="font-size: 0.72rem;">${issue.severity.toUpperCase()}</span>
-              </div>
-              <span style="font-family: var(--font-label); font-size: 0.75rem; color: var(--primary); display: block; margin-bottom: 0.45rem; font-weight: 600;">Target Zone: ${issue.zone || 'Facial Epidermis'}</span>
-              <p style="font-size: 0.82rem; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 0.5rem;">${issue.description}</p>
-            </div>
-            ${precautionsHtml}
+      const issues = data.issues || [];
+      if (issues.length === 0) {
+        shortIssuesGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; background: var(--surface-container-lowest); border: 1px dashed var(--surface-container-high); border-radius: var(--radius-md); padding: 1.5rem; text-align: center; color: var(--on-surface-variant); font-size: 0.88rem;">
+            <span class="material-symbols-outlined" style="font-size: 28px; color: var(--primary); display: block; margin-bottom: 0.5rem;">verified</span>
+            No localized surface lesions detected in scanned facial zones.
           </div>
         `;
-      }).join("");
+      } else {
+        shortIssuesGrid.innerHTML = issues.map(issue => {
+          const badgeClass = issue.severity === "severe" 
+            ? "badge-danger" 
+            : (issue.severity === "moderate" ? "badge-warning" : "badge-info");
+
+          const precautionsHtml = (issue.precautions && issue.precautions.length > 0)
+            ? `
+              <div class="issue-precautions-box">
+                <span class="precaution-title">Clinical Precautions & Care:</span>
+                <ul class="precaution-bullets">
+                  ${issue.precautions.map(p => `<li>${p}</li>`).join("")}
+                </ul>
+              </div>
+            ` : "";
+
+          const confTag = (issue.confidence != null)
+            ? `<span style="font-size: 0.72rem; color: var(--on-surface-variant); margin-left: 0.4rem; font-weight: normal;">(${Math.round(issue.confidence * 100)}% conf)</span>`
+            : "";
+
+          return `
+            <div style="background: var(--surface-container-lowest); border: 1px solid var(--surface-container-high); border-radius: var(--radius-md); padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: var(--shadow-sm);">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+                  <strong style="font-size: 0.95rem; color: var(--on-surface); font-family: var(--font-display);">${issue.issue_type}</strong>
+                  <span class="badge ${badgeClass}" style="font-size: 0.72rem;">${(issue.severity || 'mild').toUpperCase()} ${confTag}</span>
+                </div>
+                <span style="font-family: var(--font-label); font-size: 0.75rem; color: var(--primary); display: block; margin-bottom: 0.45rem; font-weight: 600;">Target Zone: ${issue.zone || 'Facial Epidermis'}</span>
+                <p style="font-size: 0.82rem; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 0.5rem;">${issue.description || ''}</p>
+              </div>
+              ${precautionsHtml}
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    // Barrier Protocol Card - omit in partial mode
+    const barrierCard = document.querySelector(".barrier-protocol-card");
+    if (barrierCard) {
+      barrierCard.style.display = isPartial ? "none" : "block";
     }
 
     // Comprehensive Global Clinical Precautions List
     const globalPrecautionsList = document.getElementById("globalPrecautionsList");
-    if (globalPrecautionsList) {
+    if (globalPrecautionsList && !isPartial) {
       const precautions = (data.precautions && data.precautions.length > 0)
         ? data.precautions
         : [
@@ -910,70 +1025,87 @@ const App = {
       globalPrecautionsList.innerHTML = precautions.map(p => `<li>${p}</li>`).join("");
     }
 
-    // 3. Skincare Products (Matched without budget restrictions)
-    const skincareGrid = document.getElementById("reportSkincareGrid");
-    const skincareTotalEl = document.getElementById("skincareRegimenCost");
-    if (skincareGrid) {
-      let skinTotal = 0;
-      skincareGrid.innerHTML = (data.recommendations || []).map(p => {
-        skinTotal += p.price_inr;
-        const isAmazon = p.platform.toLowerCase() === "amazon";
-        return `
-          <div class="product-card">
-            <div class="product-thumb-wrap">
-              <img class="product-thumb" src="${p.image_url}" alt="${p.title}" loading="lazy"/>
-              <span class="product-badge-platform ${isAmazon ? 'platform-amazon' : 'platform-flipkart'}">
-                ${isAmazon ? 'Amazon.in' : 'Flipkart'}
-              </span>
-            </div>
-            <div class="product-info">
-              <span class="product-brand">${p.brand} | ${p.category}</span>
-              <h4 class="product-title">${p.title}</h4>
-              <p class="product-reason">${p.reason}</p>
-              <div class="product-footer">
-                <span class="product-price">Rs. ${p.price_inr.toLocaleString("en-IN")}</span>
-                <a href="${p.product_url}" target="_blank" rel="noopener noreferrer" 
-                   class="btn btn-primary btn-sm"
-                   onclick="App.trackProductClick('${p.title.replace(/'/g, "\\'")}', '${p.platform}', ${p.price_inr}, '${p.product_url}')">
-                  Buy Now &rarr;
-                </a>
+    // 4. Targeted Skincare Regimen & Products Card - omit in partial mode
+    const skincareCard = document.getElementById("skincareRegimenCard");
+    if (skincareCard) {
+      skincareCard.style.display = isPartial ? "none" : "block";
+    }
+
+    if (!isPartial) {
+      const skincareGrid = document.getElementById("reportSkincareGrid");
+      const skincareTotalEl = document.getElementById("skincareRegimenCost");
+      if (skincareGrid) {
+        let skinTotal = 0;
+        skincareGrid.innerHTML = (data.recommendations || []).map(p => {
+          skinTotal += p.price_inr;
+          const isAmazon = p.platform.toLowerCase() === "amazon";
+          return `
+            <div class="product-card">
+              <div class="product-thumb-wrap">
+                <img class="product-thumb" src="${p.image_url}" alt="${p.title}" loading="lazy"/>
+                <span class="product-badge-platform ${isAmazon ? 'platform-amazon' : 'platform-flipkart'}">
+                  ${isAmazon ? 'Amazon.in' : 'Flipkart'}
+                </span>
+              </div>
+              <div class="product-info">
+                <span class="product-brand">${p.brand} | ${p.category}</span>
+                <h4 class="product-title">${p.title}</h4>
+                <p class="product-reason">${p.reason}</p>
+                <div class="product-footer">
+                  <span class="product-price">Rs. ${p.price_inr.toLocaleString("en-IN")}</span>
+                  <a href="${p.product_url}" target="_blank" rel="noopener noreferrer" 
+                     class="btn btn-primary btn-sm"
+                     onclick="App.trackProductClick('${p.title.replace(/'/g, "\\'")}', '${p.platform}', ${p.price_inr}, '${p.product_url}')">
+                    Buy Now &rarr;
+                  </a>
+                </div>
               </div>
             </div>
-          </div>
-        `;
-      }).join("");
+          `;
+        }).join("");
 
-      if (skincareTotalEl) {
-        skincareTotalEl.textContent = `Rs. ${skinTotal.toLocaleString("en-IN")}`;
+        if (skincareTotalEl) {
+          skincareTotalEl.textContent = `Rs. ${skinTotal.toLocaleString("en-IN")}`;
+        }
+      }
+
+      // AM / PM Steps
+      const amContainer = document.getElementById("amRoutineSteps");
+      if (amContainer) {
+        amContainer.innerHTML = (data.am_routine || []).map((step, idx) => `
+          <div class="routine-step">
+            <div class="step-num">${idx + 1}</div>
+            <div style="font-size: 0.85rem; color: var(--on-surface); line-height: 1.45;">${step}</div>
+          </div>
+        `).join("");
+      }
+
+      const pmContainer = document.getElementById("pmRoutineSteps");
+      if (pmContainer) {
+        pmContainer.innerHTML = (data.pm_routine || []).map((step, idx) => `
+          <div class="routine-step">
+            <div class="step-num" style="background: rgba(75, 65, 225, 0.15); color: var(--secondary);">${idx + 1}</div>
+            <div style="font-size: 0.85rem; color: var(--on-surface); line-height: 1.45;">${step}</div>
+          </div>
+        `).join("");
       }
     }
 
-    // AM / PM Steps
-    const amContainer = document.getElementById("amRoutineSteps");
-    if (amContainer) {
-      amContainer.innerHTML = (data.am_routine || []).map((step, idx) => `
-        <div class="routine-step">
-          <div class="step-num">${idx + 1}</div>
-          <div style="font-size: 0.85rem; color: var(--on-surface); line-height: 1.45;">${step}</div>
-        </div>
-      `).join("");
+    // 5. Chromatic Skin Color Palette Card - omit in partial mode
+    const chromaticCard = document.getElementById("chromaticPaletteCard");
+    if (chromaticCard) {
+      chromaticCard.style.display = isPartial ? "none" : "block";
+    }
+    if (!isPartial) {
+      this.renderChromaticColorPalette(data.color_palette, data.undertone);
     }
 
-    const pmContainer = document.getElementById("pmRoutineSteps");
-    if (pmContainer) {
-      pmContainer.innerHTML = (data.pm_routine || []).map((step, idx) => `
-        <div class="routine-step">
-          <div class="step-num" style="background: rgba(75, 65, 225, 0.15); color: var(--secondary);">${idx + 1}</div>
-          <div style="font-size: 0.85rem; color: var(--on-surface); line-height: 1.45;">${step}</div>
-        </div>
-      `).join("");
+    // 6. Head-to-Toe Fashion Curation Card - omit in partial mode
+    const outfitCard = document.getElementById("outfitCurationCard");
+    if (outfitCard) {
+      outfitCard.style.display = (isPartial || !data.outfit) ? "none" : "block";
     }
-
-    // 4. Chromatic Skin Color Palette (Which colors are best suited for patient's skin)
-    this.renderChromaticColorPalette(data.color_palette, data.undertone);
-
-    // 5. Head-to-Toe Fashion Suggestions (Hat to Shoes)
-    if (data.outfit) {
+    if (!isPartial && data.outfit) {
       this.renderHeadToToeOutfit(data.outfit);
     }
   },

@@ -4,8 +4,11 @@ import time
 import asyncio
 import collections
 import mimetypes
+import logging
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+
+logger = logging.getLogger("suit_ai.main")
 
 # Ensure standard MIME types are explicitly registered in minimal Linux environments
 mimetypes.init()
@@ -334,10 +337,66 @@ async def analyze_skin(
         err_msg = diagnosis.get("error") or "Non-human subject detected. Suit.AI clinical scanner is calibrated strictly for living human beings. Please upload or scan a clear human facial portrait."
         raise HTTPException(status_code=400, detail=err_msg)
 
-    # Check 1: Return explicit error on API failure - never a placeholder or default result
+    # Check 1: Handle AI vision failure gracefully by checking for partial computer vision data
     if diagnosis.get("success") is False or ("error" in diagnosis and diagnosis.get("is_human_face") is not False):
-        err_msg = diagnosis.get("error") or "Clinical skin analysis failed due to AI provider error or rate limits. Please retry."
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=err_msg)
+        raw_error = diagnosis.get("error") or "Clinical skin analysis failed due to AI vision provider error or rate limits."
+        logger.warning(f"[Skin Analysis AI Vision Failure] {raw_error}")
+
+        has_usable_landmarks = bool(req.landmarks and len(req.landmarks) >= 30)
+        has_usable_roboflow = bool(roboflow_detections and len(roboflow_detections) > 0)
+        has_usable_data = has_usable_landmarks or has_usable_roboflow
+
+        # If MediaPipe AND Roboflow ALSO failed to produce usable data, raise HTTP 503 (true total failure)
+        if not has_usable_data:
+            logger.error("[Skin Analysis Total Failure] AI vision, MediaPipe, and Roboflow all failed to produce usable data.")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=raw_error
+            )
+
+        # Construct Partial Response using genuine computed data from MediaPipe & Roboflow
+        partial_issues: List[SkinIssueModel] = []
+        for rf in (roboflow_detections or []):
+            issue_name = rf.get("class", "Skin Lesion")
+            zone_name = rf.get("zone", "Face")
+            conf = rf.get("confidence")
+            sev = rf.get("severity", "mild")
+            desc = f"Identified localized {issue_name.lower()} via high-resolution computer vision detection."
+            partial_issues.append(
+                SkinIssueModel(
+                    issue_type=issue_name,
+                    severity=sev,
+                    score=None,  # Explicitly omitted - never fabricated or guessed
+                    zone=zone_name,
+                    description=desc,
+                    precautions=[],
+                    confidence=conf
+                )
+            )
+
+        # Do NOT write to scans DB to avoid corrupting historical progress analytics
+        return SkinAnalysisResponse(
+            scan_id=None,
+            timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+            analysis_status="partial",
+            message="Full clinical analysis is temporarily unavailable due to AI provider demand. Showing detected skin regions and facial geometry from computer vision — full scoring will be available on retry.",
+            overall_score=None,
+            skin_type=None,
+            undertone=None,
+            age_estimate=None,
+            face_shape=face_geometry.get("face_shape") if has_usable_landmarks else None,
+            facial_proportions=face_geometry.get("facial_proportions") if has_usable_landmarks else None,
+            summary="Partial computer vision telemetry computed. Full AI clinical diagnosis temporarily unavailable.",
+            image_data=req.image_base64,
+            issues=partial_issues,
+            am_routine=[],
+            pm_routine=[],
+            precautions=[],
+            recommendations=[],
+            outfit=None,
+            roboflow_detections=roboflow_detections,
+            color_palette=None
+        )
 
     # 4. AI-driven product matching: use AI's recommended ingredients + detected issues
     matched_products = ProductService.match_products(
@@ -447,11 +506,14 @@ async def analyze_skin(
     return SkinAnalysisResponse(
         scan_id=scan_id,
         timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+        analysis_status="complete",
+        message=None,
         overall_score=diagnosis.get("overall_score", 78),
         skin_type=diagnosis.get("skin_type", "Combination"),
         undertone=diagnosis.get("undertone", "Neutral Warm"),
         age_estimate=diagnosis.get("age_estimate", 25),
-        face_shape=diagnosis.get("face_shape", "Oval"),
+        face_shape=diagnosis.get("face_shape", face_geometry.get("face_shape", "Oval")),
+        facial_proportions=face_geometry.get("facial_proportions"),
         summary=diagnosis.get("summary", "Complete facial diagnostic analysis finished."),
         image_data=req.image_base64,
         issues=formatted_issues,

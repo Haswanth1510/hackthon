@@ -80,10 +80,11 @@ class TokenResponse(BaseModel):
 class SkinIssueModel(BaseModel):
     issue_type: str
     severity: str  # mild, moderate, severe
-    score: int = Field(..., ge=0, le=100)
+    score: Optional[int] = Field(None, ge=0, le=100)
     zone: str
-    description: str
-    precautions: List[str]
+    description: Optional[str] = ""
+    precautions: Optional[List[str]] = []
+    confidence: Optional[float] = None
 
 class ProductRecommendation(BaseModel):
     id: Optional[int] = None
@@ -135,20 +136,23 @@ class OutfitResponse(BaseModel):
     styling_tips: List[str]
 
 class SkinAnalysisResponse(BaseModel):
-    scan_id: int
-    timestamp: str
-    overall_score: int
-    skin_type: str
-    undertone: str
-    age_estimate: int
-    face_shape: str
-    summary: str
+    scan_id: Optional[int] = None
+    timestamp: Optional[str] = None
+    analysis_status: str = "complete"  # "complete" or "partial"
+    message: Optional[str] = None
+    overall_score: Optional[int] = None
+    skin_type: Optional[str] = None
+    undertone: Optional[str] = None
+    age_estimate: Optional[int] = None
+    face_shape: Optional[str] = None
+    facial_proportions: Optional[Dict[str, Any]] = None
+    summary: Optional[str] = None
     image_data: Optional[str] = None
-    issues: List[SkinIssueModel]
-    am_routine: List[str]
-    pm_routine: List[str]
-    precautions: List[str]
-    recommendations: List[ProductRecommendation]
+    issues: List[SkinIssueModel] = []
+    am_routine: Optional[List[str]] = []
+    pm_routine: Optional[List[str]] = []
+    precautions: Optional[List[str]] = []
+    recommendations: Optional[List[ProductRecommendation]] = []
     outfit: Optional[OutfitResponse] = None
     roboflow_detections: Optional[List[Dict[str, Any]]] = None
     color_palette: Optional[Dict[str, Any]] = None
