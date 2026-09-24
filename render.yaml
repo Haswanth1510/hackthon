@@ -1,9 +1,9 @@
-# Render Blueprint — Stylic.AI (Free Tier Compatible)
+# Render Blueprint — Suit.AI (Free Tier Compatible)
 # Deploy to Render by connecting this repo at https://dashboard.render.com/new/blueprint
 
 services:
   - type: web
-    name: stylic-ai
+    name: suit-ai
     runtime: python
     plan: free
     region: oregon           # us-west-2

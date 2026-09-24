@@ -199,8 +199,8 @@ const App = {
   shareReport() {
     if (navigator.share) {
       navigator.share({
-        title: "Stylic.AI Skin & Style Report",
-        text: "Check out my personalized clinical skin analysis and head-to-toe style report on Stylic.AI!",
+        title: "Suit.AI Skin & Style Report",
+        text: "Check out my personalized clinical skin analysis and head-to-toe style report on Suit.AI (https://suit.ai)!",
         url: window.location.href
       }).catch(() => {});
     } else {
@@ -296,7 +296,7 @@ const App = {
                 scannerAlert.classList.add("shake-alert");
                 setTimeout(() => scannerAlert.classList.remove("shake-alert"), 800);
               }
-              this.showToast("Non-Human Subject Detected: Stylic.AI scans only human beings. Please upload a clear human facial portrait.", "danger");
+              this.showToast("Non-Human Subject Detected: Suit.AI scans only human beings. Please upload a clear human facial portrait.", "danger");
             }
           } catch (err) {
             console.error("File upload error:", err);
@@ -537,7 +537,7 @@ const App = {
       window.speechSynthesis.cancel();
       window.speechSynthesis.resume();
 
-      const text = "Welcome to Stylic.AI. This is your Morning Routine Brief number 84, presented by Doctor Elena Vance. Stratum corneum barrier integrity is measured at 89.4%. Today's recommended active compounding regimen includes liposomal Niacinamide at 4.5% combined with biomimetic ceramides. For your wardrobe, your neutral-cool chromatic profile harmonizes with charcoal horizon and deep aquifer teal.";
+      const text = "Welcome to Suit.AI. This is your Morning Routine Brief number 84, presented by Doctor Elena Vance. Stratum corneum barrier integrity is measured at 89.4%. Today's recommended active compounding regimen includes liposomal Niacinamide at 4.5% combined with biomimetic ceramides. For your wardrobe, your neutral-cool chromatic profile harmonizes with charcoal horizon and deep aquifer teal.";
       const utter = new SpeechSynthesisUtterance(text);
       utter.rate = 0.98;
       utter.pitch = 1.05;
@@ -1602,6 +1602,7 @@ const App = {
           const res = await API.login(email, password);
           this.state.currentUser = res.user;
           this.updateUserUI(res.user);
+          localStorage.setItem("suit_ai_has_account", "true");
           localStorage.setItem("Stylic.AI_has_account", "true");
           this.unlockApp();
           this.closeModal("loginModal");
@@ -1633,6 +1634,7 @@ const App = {
 
           this.state.currentUser = res.user;
           this.updateUserUI(res.user);
+          localStorage.setItem("suit_ai_has_account", "true");
           localStorage.setItem("Stylic.AI_has_account", "true");
           this.unlockApp();
           this.closeModal("registerModal");
@@ -1716,7 +1718,7 @@ const App = {
           this.updateUserUI(updatedUser);
           this.closeModal("profileModal");
           this.unlockApp();
-          this.showToast("Profile customized! Entering Stylic.AI...", "success");
+          this.showToast("Profile customized! Entering Suit.AI...", "success");
         } catch (err) {
           this.showToast(`Failed to update profile: ${err.message}`, "danger");
         }
@@ -1756,6 +1758,7 @@ const App = {
           const res = await API.login(email, password);
           this.state.currentUser = res.user;
           this.updateUserUI(res.user);
+          localStorage.setItem("suit_ai_has_account", "true");
           localStorage.setItem("Stylic.AI_has_account", "true");
           this.unlockApp();
           this.switchView("view-landing");
@@ -1784,6 +1787,7 @@ const App = {
 
           this.state.currentUser = res.user;
           this.updateUserUI(res.user);
+          localStorage.setItem("suit_ai_has_account", "true");
           localStorage.setItem("Stylic.AI_has_account", "true");
           this.unlockApp();
           this.switchView("view-landing");
@@ -1800,7 +1804,7 @@ const App = {
     const gate = document.getElementById("authGate");
     if (gate) gate.classList.remove("hidden");
 
-    const hasAccount = localStorage.getItem("Stylic.AI_has_account") === "true";
+    const hasAccount = localStorage.getItem("suit_ai_has_account") === "true" || localStorage.getItem("Stylic.AI_has_account") === "true";
     if (hasAccount) {
       this.switchGateView("password");
     } else {

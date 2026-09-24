@@ -74,8 +74,8 @@ async def check_rate_limit(key: str):
 # ────────────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Stylic.AI — Skin & Style Intelligence API",
-    description="Multi-user AI platform combining MediaPipe facial scanning, Gemini/Groq clinical skin analysis, and Amazon/Flipkart chromatic outfit curation.",
+    title="Suit.AI — Skin & Style Intelligence API",
+    description="Multi-user AI platform combining MediaPipe facial scanning, Gemini/Groq clinical skin analysis, and Amazon/Flipkart chromatic outfit curation on suit.ai.",
     version="2.0.0"
 )
 
@@ -331,7 +331,7 @@ async def analyze_skin(
     # Strict Human Face Verification:
     # Reject non-human subjects (monkeys, animals, objects)
     if diagnosis.get("is_human_face") is False:
-        err_msg = diagnosis.get("error") or "Non-human subject detected. Stylic.AI clinical scanner is calibrated strictly for living human beings. Please upload or scan a clear human facial portrait."
+        err_msg = diagnosis.get("error") or "Non-human subject detected. Suit.AI clinical scanner is calibrated strictly for living human beings. Please upload or scan a clear human facial portrait."
         raise HTTPException(status_code=400, detail=err_msg)
 
     # Check 1: Return explicit error on API failure - never a placeholder or default result
@@ -701,13 +701,13 @@ async def serve_index():
     index_file = FRONTEND_DIR / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file), media_type="text/html")
-    return JSONResponse({"message": "Stylic.AI backend running. Frontend not found.", "status": "ok"})
+    return JSONResponse({"message": "Suit.AI backend running. Frontend not found.", "status": "ok"})
 
 # Mount /static → frontend/ so that /static/js/app.js, /static/css/style.css, etc. all resolve.
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 # Also mount direct subpaths in case assets are requested directly without /static prefix
-for sub in ["css", "js", "images"]:
+for sub in ["css", "js", "images", "static"]:
     subdir = FRONTEND_DIR / sub
     if subdir.exists():
         app.mount(f"/{sub}", StaticFiles(directory=str(subdir)), name=sub)

@@ -376,7 +376,7 @@ DIAGNOSTIC INSTRUCTIONS:
   If the subject is an animal (such as a monkey, ape, dog, cat, chimpanzee), an inanimate object, a cartoon, drawing, sculpture, or non-human subject, return ONLY:
   {{
     "is_human_face": false,
-    "error": "Non-human subject detected. Stylic.AI clinical scanner is calibrated strictly for human facial analysis. Please scan or upload a clear, genuine human facial portrait."
+    "error": "Non-human subject detected. Suit.AI clinical scanner is calibrated strictly for human facial analysis. Please scan or upload a clear, genuine human facial portrait."
   }}
 
 - INDIVIDUALIZED CLINICAL EVALUATION ("is_human_face": true):
@@ -474,7 +474,7 @@ CRITICAL HUMAN VERIFICATION PROTOCOL:
   Return ONLY valid JSON matching:
   {{
     "is_human_face": false,
-    "error": "Non-human subject detected. Stylic.AI clinical scanner is calibrated strictly for human facial analysis. Please scan or upload a clear, genuine human facial portrait."
+    "error": "Non-human subject detected. Suit.AI clinical scanner is calibrated strictly for human facial analysis. Please scan or upload a clear, genuine human facial portrait."
   }}
 
 - If and ONLY if a genuine living human face is verified, proceed with full dermatological evaluation:
@@ -512,7 +512,7 @@ Return ONLY valid JSON with keys:
             headers = {
                 "Authorization": f"Bearer {active_key}",
                 "Content-Type": "application/json",
-                "User-Agent": "StylicAI/1.0"
+                "User-Agent": "SuitAI/1.0"
             }
             if "qwen" in model_name.lower() or "vision" in model_name.lower():
                 groq_messages = [
@@ -662,7 +662,7 @@ DIAGNOSTIC INSTRUCTIONS:
   Return ONLY:
   {{
     "is_human_face": false,
-    "error": "Non-human subject detected. Stylic.AI clinical scanner is calibrated strictly for human facial analysis. Please scan or upload a clear, genuine human facial portrait."
+    "error": "Non-human subject detected. Suit.AI clinical scanner is calibrated strictly for human facial analysis. Please scan or upload a clear, genuine human facial portrait."
   }}
 
 - INDIVIDUALIZED CLINICAL EVALUATION ("is_human_face": true):

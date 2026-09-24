@@ -1,4 +1,4 @@
-# Stylic.AI — Clinical Skin & Style Intelligence Platform
+# Suit.AI — Clinical Skin & Style Intelligence Platform
 
 > **AI-powered, multi-user skin diagnostics + chromatic color palette + head-to-toe outfit curation with live affiliate shopping links.**
 
