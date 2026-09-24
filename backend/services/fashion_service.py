@@ -193,6 +193,87 @@ Return ONLY a valid JSON object matching this schema:
         return None
 
     @classmethod
+    async def _call_bazaarlink_fashion(
+        cls,
+        occasion: str,
+        skin_undertone: str,
+        face_shape: str,
+        gender: str,
+        budget_inr: float,
+        style_preference: str,
+        color_palette: Optional[Dict[str, Any]] = None,
+        age: int = 25,
+        api_key: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Backup fashion generation using BazaarLink OpenAI-compatible gateway.
+        """
+        active_key = api_key or os.getenv("BAZAARLINK_API_KEY") or os.getenv("BACKUP_AI_KEY", "")
+        if not active_key or not active_key.strip():
+            return None
+
+        best_colors = color_palette.get("best_colors", []) if color_palette else []
+        palette_desc = ", ".join([f"{c.get('name', '')} ({c.get('hex', '')})" for c in best_colors[:5]]) if best_colors else f"Flattering to {skin_undertone} undertones"
+
+        prompt = f"""You are an elite personal fashion stylist and aesthetic consultant.
+Design a cohesive, complete 5-piece Head-to-Toe capsule outfit (Headwear, Topwear, Bottomwear, Footwear, Accessory) for:
+- Gender: {gender}
+- Age: {age}
+- Diagnosed Skin Undertone: {skin_undertone}
+- Face Shape: {face_shape}
+- Occasion: {occasion}
+- Style Aesthetic: {style_preference}
+- Total Budget: INR {budget_inr:.0f}
+- Flattering Chromatic Colors: {palette_desc}
+
+Requirements:
+1. Provide exactly 5 pieces: Headwear, Topwear, Bottomwear, Footwear, Accessory.
+2. Total price sum of all 5 items MUST NOT exceed {budget_inr:.0f} INR.
+3. For each piece, generate precise Amazon India search keywords including brand name, garment category, and color.
+
+Return ONLY a valid JSON object matching this schema:
+{{
+  "style_name": "{style_preference} · {gender.capitalize()} Capsule ({occasion})",
+  "styling_tips": [
+    "Tip 1 regarding chromatic harmony with skin undertone",
+    "Tip 2 regarding silhouette and facial geometry balance"
+  ],
+  "items": [
+    {{"type": "Headwear", "name": "Item Name", "brand": "Brand", "color_name": "Color", "color_hex": "#HEX", "price": 299, "keywords": "Brand Garment Color"}},
+    {{"type": "Topwear", "name": "Item Name", "brand": "Brand", "color_name": "Color", "color_hex": "#HEX", "price": 999, "keywords": "Brand Garment Color"}},
+    {{"type": "Bottomwear", "name": "Item Name", "brand": "Brand", "color_name": "Color", "color_hex": "#HEX", "price": 1099, "keywords": "Brand Garment Color"}},
+    {{"type": "Footwear", "name": "Item Name", "brand": "Brand", "color_name": "Color", "color_hex": "#HEX", "price": 899, "keywords": "Brand Garment Color"}},
+    {{"type": "Accessory", "name": "Item Name", "brand": "Brand", "color_name": "Color", "color_hex": "#HEX", "price": 204, "keywords": "Brand Garment Color"}}
+  ]
+}}"""
+
+        endpoint = os.getenv("BAZAARLINK_API_URL", "https://api.bazaarlink.ai/v1/chat/completions")
+        model_name = os.getenv("BAZAARLINK_MODEL", "auto:free")
+        headers = {
+            "Authorization": f"Bearer {active_key.strip()}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "response_format": {"type": "json_object"}
+        }
+
+        masked_key = f"...{active_key[-4:]}" if len(active_key) >= 4 else "..."
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            try:
+                resp = await client.post(endpoint, headers=headers, json=payload)
+                if resp.status_code == 200:
+                    content = resp.json()["choices"][0]["message"]["content"]
+                    parsed = json.loads(content)
+                    print(f"[BazaarLinkFashion] Backup outfit generation succeeded with model {model_name} on key ({masked_key})")
+                    return parsed
+            except Exception as e:
+                print(f"[BazaarLinkFashion] Backup outfit generation exception: {e}")
+        return None
+
+    @classmethod
     async def recommend_outfit(
         cls,
         occasion: str = "Casual",
@@ -274,6 +355,22 @@ Return ONLY a valid JSON object matching this schema:
             color_palette=color_palette,
             age=age
         )
+
+        if not gemini_fashion or "items" not in gemini_fashion or len(gemini_fashion.get("items", [])) < 3:
+            backup_key = os.getenv("BAZAARLINK_API_KEY") or os.getenv("BACKUP_AI_KEY")
+            if backup_key and backup_key.strip():
+                print("[FashionService] Engaging BazaarLink backup AI engine for outfit curation...")
+                gemini_fashion = await cls._call_bazaarlink_fashion(
+                    occasion=occ,
+                    skin_undertone=skin_undertone,
+                    face_shape=face_shape,
+                    gender=gender,
+                    budget_inr=preferred_budget,
+                    style_preference=style_preference,
+                    color_palette=color_palette,
+                    age=age,
+                    api_key=backup_key.strip()
+                )
 
         selected_items = []
         actual_total = 0.0

@@ -28,8 +28,14 @@ services:
       - key: GEMINI_API_KEY
         sync: false          # Set in Render Dashboard → Environment
 
+      - key: GEMINI_API_KEY_SKIN
+        sync: false          # Set in Render Dashboard → Environment (dedicated for clinical skin analysis)
+
+      - key: GEMINI_API_KEY_FASHION
+        sync: false          # Set in Render Dashboard → Environment (dedicated for fashion & outfit styling)
+
       - key: GEMINI_MODEL
-        value: gemini-2.0-flash-lite
+        value: gemini-flash-lite-latest
 
       - key: GROK_API_KEY
         sync: false          # Set in Render Dashboard → Environment
@@ -42,6 +48,19 @@ services:
 
       - key: GROK_API_URL
         value: https://api.groq.com/openai/v1/chat/completions
+
+      - key: BAZAARLINK_API_KEY
+        sync: false          # Set in Render Dashboard → Environment (backup AI key)
+
+      - key: BACKUP_AI_KEY
+        sync: false          # Set in Render Dashboard → Environment
+
+      - key: BAZAARLINK_MODEL
+        value: auto:free
+
+      - key: BAZAARLINK_API_URL
+        value: https://api.bazaarlink.ai/v1/chat/completions
+
 
       - key: ROBOFLOW_API_KEY
         sync: false          # Set in Render Dashboard → Environment

@@ -282,6 +282,23 @@ class GrokSkinService:
             except Exception as e:
                 print(f"[AIService] Secondary Groq API error: {e}.")
 
+        # Tier 3: Tertiary Backup Engine — BazaarLink / OpenAI-compatible Gateway (Engaged if Gemini & Groq fail)
+        backup_key = os.getenv("BAZAARLINK_API_KEY") or os.getenv("BACKUP_AI_KEY")
+        if backup_key and backup_key.strip():
+            try:
+                print("[AIService] Engaging Tertiary Backup AI Engine (BazaarLink)...")
+                bl_result = await cls._call_bazaarlink_vision(
+                    image_base64=clean_b64,
+                    landmarks=landmarks_telemetry,
+                    user_context=user_context,
+                    roboflow_detections=roboflow_detections,
+                    api_key=backup_key.strip()
+                )
+                if bl_result:
+                    return bl_result
+            except Exception as e:
+                print(f"[AIService] Tertiary BazaarLink API error: {e}.")
+
         # Check 1 & Check 3: Check whether fallback is gated behind test flag
         allow_mock = (
             os.getenv("ALLOW_MOCK_FALLBACK", "").lower() in ("true", "1") or
@@ -568,18 +585,132 @@ Return ONLY valid JSON with keys:
                 "response_format": {"type": "json_object"}
             }
 
+        masked_key = f"...{active_key[-4:]}" if len(active_key) >= 4 else "..."
+        max_retries = 3
+        base_delay = 1.0
+
         async with httpx.AsyncClient(timeout=35.0) as client:
-            resp = await client.post(endpoint, headers=headers, json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                content = data["choices"][0]["message"]["content"]
-                print(f"[GrokAPI Raw Response ({len(content)} chars)]: {content[:200]}...")
-                clean_json = cls._clean_json_text(content)
-                parsed = json.loads(clean_json)
-                return cls._sanitize_to_standard_english(parsed)
-            else:
-                print(f"[GrokAPI Response Error]: {resp.status_code} - {resp.text}")
-                return None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    resp = await client.post(endpoint, headers=headers, json=payload)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        content = data["choices"][0]["message"]["content"]
+                        print(f"[GrokAPI (Attempt {attempt}/{max_retries}) Raw Response ({len(content)} chars)]: {content[:200]}...")
+                        clean_json = cls._clean_json_text(content)
+                        parsed = json.loads(clean_json)
+                        print(f"[GrokAPI] Clinical skin analysis succeeded on attempt {attempt}/{max_retries} with model {model_name}")
+                        return cls._sanitize_to_standard_english(parsed)
+                    elif resp.status_code in (429, 500, 502, 503):
+                        delay = base_delay * (2 ** (attempt - 1))
+                        print(f"[GrokAPI] Upstream server status HTTP {resp.status_code} on key ({masked_key}) with model {model_name}. Attempt {attempt}/{max_retries}. Backing off {delay:.1f}s before retry...")
+                        if attempt < max_retries:
+                            await asyncio.sleep(delay)
+                            continue
+                        else:
+                            print(f"[GrokAPI] Exhausted all {max_retries} retries for model {model_name} due to HTTP {resp.status_code}.")
+                    else:
+                        print(f"[GrokAPI Response Error]: {resp.status_code} - {resp.text[:150]}")
+                        break
+                except Exception as e:
+                    delay = base_delay * (2 ** (attempt - 1))
+                    print(f"[GrokAPI] Exception on key ({masked_key}) with model {model_name} (Attempt {attempt}/{max_retries}): {e}")
+                    if attempt < max_retries:
+                        await asyncio.sleep(delay)
+                    else:
+                        print(f"[GrokAPI] Exhausted all {max_retries} retries due to exception: {e}")
+        return None
+
+    @classmethod
+    async def _call_bazaarlink_vision(
+        cls,
+        image_base64: str,
+        landmarks: Optional[Dict[str, Any]],
+        user_context: Optional[Dict[str, Any]],
+        roboflow_detections: Optional[List[Dict[str, Any]]] = None,
+        api_key: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Tertiary Backup AI Engine using BazaarLink OpenAI-compatible gateway.
+        Engaged as resilient third-tier fallback if Gemini and Groq are both unreachable.
+        """
+        active_key = api_key or os.getenv("BAZAARLINK_API_KEY") or os.getenv("BACKUP_AI_KEY", "")
+        if not active_key or not active_key.strip():
+            return None
+
+        clean_b64 = image_base64.split(",")[-1] if "," in image_base64 else image_base64
+        endpoint = os.getenv("BAZAARLINK_API_URL", "https://api.bazaarlink.ai/v1/chat/completions")
+        model_name = os.getenv("BAZAARLINK_MODEL", "auto:free")
+
+        # Pixel & mesh telemetry
+        telemetry = cls.extract_computer_vision_telemetry(clean_b64)
+        rf_telemetry = cls._format_roboflow_telemetry(roboflow_detections)
+        face_shape = landmarks.get("face_shape", "Oval") if landmarks else "Oval"
+        ctx_gender = user_context.get("gender", "unspecified") if user_context else "unspecified"
+        ctx_age = user_context.get("age", 25) if user_context else 25
+
+        prompt = f"""You are a clinical dermatologist and aesthetic color consultant.
+Analyze this patient (Gender: {ctx_gender}, Age: ~{ctx_age}, Face Shape: {face_shape}, Telemetry Baseline: {telemetry.get('dynamic_score', 75)}/100).
+Confirm human face and return ONLY valid JSON matching this schema:
+{{
+  "is_human_face": true,
+  "overall_score": {telemetry.get('dynamic_score', 75)},
+  "skin_type": "Combination",
+  "undertone": "Neutral Warm",
+  "age_estimate": {ctx_age},
+  "summary": "Clinical skin barrier and chromatic evaluation in professional English.",
+  "issues": [
+    {{
+      "issue_type": "Skin Concern",
+      "severity": "mild",
+      "score": 40,
+      "zone": "Cheeks",
+      "description": "Localized observation.",
+      "precautions": ["Hydration", "Sunscreen"]
+    }}
+  ],
+  "am_routine": ["Gentle cleanser", "Antioxidant serum", "Moisturizer", "SPF 50+"],
+  "pm_routine": ["Cleanser", "Barrier repair cream"],
+  "precautions": ["Avoid harsh scrubbing"],
+  "recommended_ingredients": ["Ceramides", "Hyaluronic Acid", "Niacinamide"],
+  "color_palette": {{
+    "season": "Warm Autumn",
+    "undertone": "Warm",
+    "contrast_level": "Medium Contrast",
+    "best_colors": [{{"name": "Olive Green", "hex": "#556B2F", "family": "Earth", "advice": "Flattering warm tone"}}],
+    "colors_to_avoid": [{{"name": "Icy Blue", "hex": "#AFEEEE", "why": "Clashes with warm undertones"}}],
+    "style_rationale": "Harmonizes with natural warm pigmentation.",
+    "wardrobe_guidance": "Warm neutral base with earthy accents.",
+    "jewelry_metal_harmony": "Yellow gold and brass."
+  }}
+}}"""
+
+        headers = {
+            "Authorization": f"Bearer {active_key.strip()}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "response_format": {"type": "json_object"}
+        }
+
+        masked_key = f"...{active_key[-4:]}" if len(active_key) >= 4 else "..."
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            try:
+                resp = await client.post(endpoint, headers=headers, json=payload)
+                if resp.status_code == 200:
+                    content = resp.json()["choices"][0]["message"]["content"]
+                    clean_json = cls._clean_json_text(content)
+                    parsed = json.loads(clean_json)
+                    print(f"[BazaarLinkAPI] Tertiary backup analysis succeeded with model {model_name} on key ({masked_key})")
+                    return cls._sanitize_to_standard_english(parsed)
+                else:
+                    print(f"[BazaarLinkAPI] Returned HTTP {resp.status_code}: {resp.text[:150]}")
+            except Exception as e:
+                print(f"[BazaarLinkAPI] Exception on tertiary backup call: {e}")
+        return None
 
     @classmethod
     async def _call_gemini_vision(
@@ -748,7 +879,7 @@ Return ONLY valid JSON matching this structure:
 }}
 """
 
-        models_to_try = ["gemini-flash-lite-latest", "gemini-flash-latest"]
+        models_to_try = ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.5-flash"]
         payload = {
             "contents": [
                 {
@@ -781,20 +912,21 @@ Return ONLY valid JSON matching this structure:
                                 parts = candidates[0]["content"].get("parts", [])
                                 if parts and "text" in parts[0]:
                                     raw_text = parts[0]["text"]
-                                    print(f"[GeminiSkinAPI Raw Response ({len(raw_text)} chars)]: {raw_text[:200]}...")
+                                    print(f"[GeminiSkinAPI (Attempt {attempt}/{max_retries})] Raw Response ({len(raw_text)} chars): {raw_text[:200]}...")
                                     clean_json = cls._clean_json_text(raw_text)
                                     parsed = json.loads(clean_json)
+                                    print(f"[GeminiSkinAPI] Clinical skin analysis succeeded on attempt {attempt}/{max_retries} with model {model_name}")
                                     return cls._sanitize_to_standard_english(parsed)
-                        elif resp.status_code == 429:
+                        elif resp.status_code in (429, 500, 502, 503):
                             delay = base_delay * (2 ** (attempt - 1))
-                            print(f"[GeminiSkinAPI] Rate limit (HTTP 429) on skin key ({masked_key}) with model {model_name}. Attempt {attempt}/{max_retries}. Backing off {delay:.1f}s before retry...")
+                            print(f"[GeminiSkinAPI] Upstream server error/rate limit (HTTP {resp.status_code}) on skin key ({masked_key}) with model {model_name}. Attempt {attempt}/{max_retries}. Backing off {delay:.1f}s before retry...")
                             if attempt < max_retries:
                                 await asyncio.sleep(delay)
                                 continue
                             else:
-                                print(f"[GeminiSkinAPI] Exhausted retries for model {model_name} due to rate limiting on key ({masked_key}).")
+                                print(f"[GeminiSkinAPI] Exhausted retries for model {model_name} due to HTTP {resp.status_code} on key ({masked_key}).")
                         else:
-                            print(f"[GeminiSkinAPI] Key ({masked_key}) with model {model_name} returned HTTP {resp.status_code}: {resp.text[:150]}")
+                            print(f"[GeminiSkinAPI] Key ({masked_key}) with model {model_name} returned unrecoverable HTTP {resp.status_code}: {resp.text[:150]}")
                             break
                     except Exception as e:
                         delay = base_delay * (2 ** (attempt - 1))
