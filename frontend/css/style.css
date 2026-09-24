@@ -180,11 +180,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .brand-logo-img {
   width: auto;
-  height: 32px;
-  max-width: 90px;
+  height: 38px;
+  max-width: 120px;
   object-fit: contain;
-  border-radius: 6px;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.08));
+  border-radius: 4px;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .brand-name {
